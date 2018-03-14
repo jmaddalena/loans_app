@@ -18,19 +18,32 @@ max_mo_pay <- 800
 ```
 
 ```{r}
-loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, min_pay = 207.97, fixed = F),
-                   navient1 = list(name = "navient1", bal = 2578.48, int = 0.0535, min_pay = 38.04, fixed = T),
-                   navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, min_pay = 54.32, fixed = T),
-                   navient3 = list(name = "navient3", bal = 2010.55, int = 0.0655, min_pay = 31.09, fixed = T),
-                   navient4 = list(name = "navient4", bal = 4448.61, int = 0.0655, min_pay = 95.80, fixed = T))
+loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, 
+                                        min_pay = 207.97, fixed = F, months_left = NA),
+                       navient1 = list(name = "navient1", bal = 2575.84, int = 0.0535, 
+                                       min_pay = 38.04, fixed = T, months_left = 85),
+                       navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, 
+                                       min_pay = 54.32, fixed = T, months_left = 85),
+                       navient3 = list(name = "navient3", bal = 2010.55, int = 0.0655, 
+                                       min_pay = 31.09, fixed = T, months_left = 85),
+                       navient4 = list(name = "navient4", bal = 4448.61, int = 0.0655, 
+                                       min_pay = 95.80, fixed = T, months_left = 85))
 
+loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 427, int_tiebreak = "higher balance")
+
+
+sallie_mae_only <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, min_pay = 207.97, fixed = F))
+sm_only_sched <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 207.97)
+sm_only_sched5yr <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 273.35)
+
+sallie_mae_refinance <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, min_pay = 207.97, fixed = F))
+sm_only_sched <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 207.97)
 
 loan_info_list2 <- list(salliemae = list(name = "sofi", bal = 23746.19, int = 0.04375, min_pay = 444.05, fixed = T),
                    navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, min_pay = 54.32, fixed = T))
   
 loan_info_list3 <- list(salliemae = list(name = "sofi", bal = 27712.18, int = 0.04375, min_pay = 444.05, fixed = T))
         
-loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 427, int_tiebreak = "higher balance")
           
 loans_pay800 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 800, int_tiebreak = "higher balance")
  
@@ -199,7 +212,7 @@ ggplot(plot_dat, aes(x = month_count, y = value, col = comp)) +
 ```
 
 ```{r}
-sched_highbal <- conduct_schedule_analysis(loan_info_list, payoff_date = payoff_date, int_tiebreak = "higher balance", max_mo_pay = 800)
+sched_highbal <- conduct_schedule_analysis(loan_info_list, int_tiebreak = "higher balance", max_mo_pay = 800)
 
 plot_schedules(sched_highbal)
 ```
@@ -225,8 +238,7 @@ max(sched_refinance$month_count)
 
 ```
 
-
-Notes:
+Tasks:
 
 Loans are on an ammoritizations schedule-- payments are the same each month but change in interest/principle ratio
 
@@ -243,8 +255,36 @@ Seems like if they input months, we have to calculate it that way and with max_p
 
 But how to do schedules with only months and no max payment? How to determine total monthly $ required to pay off those loans. Maybe this is a feature to add later. 
 
+Why does paying off the higher balance result in less overall interest when interest rates are the same?
+
+Optional original principle to back calculate how much they have been paying (if this doesn't make sense going back in time - not round - just made the line dashed with no definitive start point. People could have been overpaying, reducing their balance.
+
+If lower rate loan is paid off before end of load, "leftover" payment must move on to next loan. Make sure to account for when smaller rate loans are paid off before higher rate loans - they must be removed from sort_df.
+
+
+Notes:
+
+Navient warned me if I asked to increase my overpayments I'd be locked in as if I can't just 
+call them back if I can't swing it.
+
+SoFi said I will save $3,705.60 over the life of my loan... This is questionable. Verify my results against other calculators/spreadsheets. 
+
+I've accidentally overpaid my navient4 loan so it hasn't been pulling from my account for months and I've advanced my due date to January 2019, but all the while they have been getting interest from me. It's like I haven't been paying them off early...  Still have 85 months left
+
 Features:
 
 Download schedules
+Email reminders for when they should call to increase loan amounts
+
+Taxes information
+
+There is something funny here, for Navient 1:
+unpaid principal 2575.84
+unpaid interest 4.91
+ 
+85 months * 38.04
+
+After talking to a guy at Navient, I realized this schedule is not updated if there are any overpayments, etc. The X months @ $Y really can't be trusted. 
+
 
 
