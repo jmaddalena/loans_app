@@ -10,12 +10,7 @@ library(tidyverse)
 source("source.R")
 ```
 
-Goals:
-
-```{r}
-payoff_date <- ymd_hms("2021-06-10 00:00:00")
-max_mo_pay <- 800
-```
+# Loan Info Lists
 
 ```{r}
 loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, 
@@ -29,214 +24,43 @@ loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int 
                        navient4 = list(name = "navient4", bal = 4448.61, int = 0.0655, 
                                        min_pay = 95.80, fixed = T, months_left = 85))
 
-loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 427, int_tiebreak = "higher balance")
+loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = NA, int_tiebreak = "higher balance")
+        
+loans_pay800 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 600, int_tiebreak = "higher balance")
+ 
+```
 
-
-sallie_mae_only <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, min_pay = 207.97, fixed = F))
-sm_only_sched <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 207.97)
-sm_only_sched5yr <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 273.35)
-
-sallie_mae_refinance <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, min_pay = 207.97, fixed = F))
-sm_only_sched <- conduct_schedule_analysis(sallie_mae_only, max_mo_pay = 207.97)
-
+```{r}
 loan_info_list2 <- list(salliemae = list(name = "sofi", bal = 23746.19, int = 0.04375, min_pay = 444.05, fixed = T),
                    navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, min_pay = 54.32, fixed = T))
   
 loan_info_list3 <- list(salliemae = list(name = "sofi", bal = 27712.18, int = 0.04375, min_pay = 444.05, fixed = T))
-        
-          
-loans_pay800 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 800, int_tiebreak = "higher balance")
- 
-sched_refinance1 <- conduct_schedule_analysis(loan_info_list = loan_info_list2, max_mo_pay = 800, int_tiebreak = "higher balance")
-
-sched_refinance2 <- conduct_schedule_analysis(loan_info_list = loan_info_list3, max_mo_pay = 800, int_tiebreak = "higher balance")
-
-sched_refinance2_min <- conduct_schedule_analysis(loan_info_list = loan_info_list3, max_mo_pay = 519.08, int_tiebreak = "higher balance")
 
 ```
 
+# Plots
+
+Plot of balances and payments over time:
 
 ```{r}
-
-loan_info_df <- purrr::map_df(loan_info_list, function(sublist){ 
-    data.frame(sublist, stringsAsFactors = F)
-  })
-  
-nav4 <- calculate_schedule(loan_info_df, "navient4", 24)
-
-
-```
-
-Proper steps, I believe:
-* Put all extra payments to navient4 until bal_navient4 == bal_navient3
-* Put half towards navient3 and navient4 until paid off
-* Put all extra payments to navient1 until paid off (unless Sallie Mae interest rates go up)
-* Put all extra payments to Sallie Mae until paid off
-* Put all extra payments to navient2 until paid off
-
-```{r}
-months_til_payoff <- floor(difftime(payoff_date, Sys.time(), units = "days") %>% 
-  as.numeric/30.42)
-
-loan_df_sort <- loan_info_df %>%
-  arrange(desc(int), desc(bal))
-  
-all_extra_pay_sched <- NULL
-
-for(i in 1:nrow(loan_df_sort)){
-  print(i)
-  min_pay <- sum(loan_df_sort$min_pay)
-  extra_pay <- max_mo_pay - min_pay
-
-  loan_pay_name <- loan_df_sort[1, "name"]
-   
-  extra_pay_sched <- calculate_schedule(loan_df_sort, loan_name = loan_pay_name, 
-                                  mo_payment = extra_pay) %>%
-    mutate(loan = loan_pay_name,
-           extra_pay = extra_pay)
-  
-  all_extra_pay_sched <- bind_rows(all_extra_pay_sched, extra_pay_sched)
-   
-  payoff_mos <- max(extra_pay_sched$month)
- 
-  if(nrow(loan_df_sort) > 1){
-    others <- loan_df_sort[2:nrow(loan_df_sort), "name"]
-    all_others_pay <- purrr::map_df(others, function(loan_name){
-      min_pay <- loan_df_sort[loan_df_sort$name == loan_name, "min_pay"]
-      sched <- calculate_schedule(loan_df_sort, loan_name = loan_name, mo_payment = min_pay)
-      final_bal <- sched[sched$month == payoff_mos, "balance"]
-      tot_int <- sum(sched[sched$month %in% 1:payoff_mos, "int_pay"])
-      
-      data.frame(name = loan_name, final_bal = final_bal, tot_int = tot_int, stringsAsFactors = F)
-    })
-  
-    loan_df_sort <- loan_df_sort[-1, ]
-
-    loan_df_sort <- merge(loan_df_sort, all_others_pay, by = "name") %>%
-      mutate(bal = final_bal) %>%
-      arrange(desc(int), desc(bal)) %>%
-      select(name, bal, int, min_pay)
-  }
-}
- 
-extra_pay_df <- all_extra_pay_sched %>%
-  filter(month != 0) %>%
-  mutate(month_count = 1:n())
-
-
-
-```
-
-
-```{r}
-months_til_payoff <- floor(difftime(payoff_date, Sys.time(), units = "days") %>% 
-  as.numeric/30.42)
-
-loan_df_sort <- loan_info_df %>%
-  arrange(desc(int), desc(bal))
-  
-orig_order <- loan_df_sort$name
-
-all_extra_pay_sched <- NULL
-all_others_pay_sched <- NULL
-
-for(i in 1:nrow(loan_df_sort)){
-  print(i)
-  min_pay <- sum(loan_df_sort$min_pay)
-  extra_pay <- max_mo_pay - min_pay
-  min_pay_loan <- loan_df_sort$min_pay[1]
-   
-  loan_pay_name <- loan_df_sort[1, "name"]
-   
-  extra_pay_sched <- calculate_schedule(loan_df_sort, loan_name = loan_pay_name, 
-                                  mo_payment = extra_pay + min_pay_loan) %>%
-    mutate(name = loan_pay_name,
-           extra_pay = extra_pay)
-  
-  all_extra_pay_sched <- bind_rows(all_extra_pay_sched, extra_pay_sched)
-   
-  payoff_mos <- max(extra_pay_sched$month)
- 
-  if(nrow(loan_df_sort) > 1){
-    others <- loan_df_sort[2:nrow(loan_df_sort), "name"]
-    others_pay_sched <- purrr::map_df(others, function(loan_name){
-      min_pay <- loan_df_sort[loan_df_sort$name == loan_name, "min_pay"]
-      sched <- calculate_schedule(loan_df_sort, loan_name = loan_name, mo_payment = min_pay)
-      sched <- sched[sched$month %in% 1:payoff_mos, ]
-      sched$name = loan_name
-      sched
-    })
-    
-    all_others_pay_sched <- bind_rows(all_others_pay_sched, others_pay_sched)
-    
-    others_summ <- others_pay_sched %>%
-      group_by(name) %>%
-      summarize(final_bal = min(balance))
-  
-    loan_df_sort <- loan_df_sort[-1, ]
-
-    loan_df_sort <- merge(loan_df_sort, others_summ, by = "name") %>%
-      mutate(bal = final_bal) %>%
-      arrange(desc(int), desc(bal)) %>%
-      select(name, bal, int, min_pay)
-  }
-}
- 
-extra_pay_df <- all_extra_pay_sched %>%
-  filter(month != 0) %>%
-  mutate(month_count = 1:n())
-
-min_pay_df <- all_others_pay_sched %>%
-  filter(month != 0) %>%
-  group_by(name) %>%
-  arrange(name, desc(balance)) %>%
-  mutate(month_count = 1:n())
-
-all_payments <- bind_rows(extra_pay_df, min_pay_df) %>%
-  rowwise() %>% 
-  mutate(true_total = sum(c(total_pay, extra_pay), na.rm = T)) %>%
-  mutate(name = factor(name, levels = orig_order))
-
+plot_schedules(loans_as_is)
 ```
 
 ```{r}
-plot_dat <- all_payments %>%
-  rename(`interest payment` = int_pay, 
-         `principle payment` = prin_pay) %>%
-  gather(comp, value, `interest payment`, `principle payment`)
-
-ggplot(plot_dat, aes(x = month_count, y = value, col = comp)) +
-  geom_line() +
-  facet_wrap(~name, ncol = 1)
-  
+plot_mo_payments(loans_pay800)
 ```
 
-```{r}
-sched_highbal <- conduct_schedule_analysis(loan_info_list, int_tiebreak = "higher balance", max_mo_pay = 800)
-
-plot_schedules(sched_highbal)
-```
 
 
 ```{r}
-sched_lowbal <- conduct_schedule_analysis(loan_info_list, payoff_date = payoff_date, int_tiebreak = "lower balance", max_mo_pay = 800)
+payoff_options <- get_payoff_options(loan_info_list)
 
-ggplot(sched_lowbal, aes(x = month_count, y = balance)) +
-  geom_line() + 
-  facet_wrap(~name, ncol = 1) 
-
-sched_refinance <- conduct_schedule_analysis(loan_info_list2, payoff_date = payoff_date, int_tiebreak = "higher balance", max_mo_pay = 800)
-
-sum(sched_highbal$int_pay)
-
-sum(sched_refinance$int_pay)
-max(sched_refinance$month_count)
-
+plot_payoff_options(payoff_options)
 ```
 
-```{r}
 
-```
+
+# Notes
 
 Tasks:
 
@@ -246,7 +70,7 @@ They can specify a time to pay off and have no upper bound on monthly payments. 
 
 Need to account for:
 * The month a loan is paid off, there is "leftover" extra payment. Designate this towards the next loan.
-* If a loan gets paid off while paying off extra for a higher interest loan. (Not common if loans have same payment schedule)
+* If a loan gets paid off while paying off extra for a higher interest loan. (Not common if loans have same payment schedule-- not true if you have been paying off one loan early)
 
 * what if they input only months, and no max payment?
 * what if they input months and max_payment but actual monthly payments would be less than max_payment?
@@ -261,6 +85,8 @@ Optional original principle to back calculate how much they have been paying (if
 
 If lower rate loan is paid off before end of load, "leftover" payment must move on to next loan. Make sure to account for when smaller rate loans are paid off before higher rate loans - they must be removed from sort_df.
 
+What about including other aspects of folks with student loans, e.g. income and rent
+
 
 Notes:
 
@@ -269,7 +95,7 @@ call them back if I can't swing it.
 
 SoFi said I will save $3,705.60 over the life of my loan... This is questionable. Verify my results against other calculators/spreadsheets. 
 
-I've accidentally overpaid my navient4 loan so it hasn't been pulling from my account for months and I've advanced my due date to January 2019, but all the while they have been getting interest from me. It's like I haven't been paying them off early...  Still have 85 months left
+I've accidentally overpaid my navient4 loan so it hasn't been pulling from my account for months and I've advanced my due date to January 2019, but all the while they have been getting interest from me. It's like I haven't been paying them off early...  Still have 85 months left. Actually this is untrue because I've signed up for autopay.
 
 Features:
 
@@ -286,5 +112,6 @@ unpaid interest 4.91
 
 After talking to a guy at Navient, I realized this schedule is not updated if there are any overpayments, etc. The X months @ $Y really can't be trusted. 
 
-
-
+Text needed:
+* No variable interest rates accounted for
+* 
