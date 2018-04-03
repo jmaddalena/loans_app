@@ -15,19 +15,19 @@ source("source.R")
 ```{r}
 loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, 
                                         min_pay = 207.97, fixed = F, months_left = NA),
-                       navient1 = list(name = "navient1", bal = 2575.84, int = 0.0535, 
+                       navient1 = list(name = "navient1", bal = 2542.98, int = 0.0535, 
                                        min_pay = 38.04, fixed = T, months_left = 85),
-                       navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, 
+                       navient2 = list(name = "navient2", bal = 3911.15, int = 0.0315, 
                                        min_pay = 54.32, fixed = T, months_left = 85),
-                       navient3 = list(name = "navient3", bal = 2010.55, int = 0.0655, 
+                       navient3 = list(name = "navient3", bal = 1893.53, int = 0.0655, 
                                        min_pay = 31.09, fixed = T, months_left = 85),
-                       navient4 = list(name = "navient4", bal = 4448.61, int = 0.0655, 
+                       navient4 = list(name = "navient4", bal = 4355.96, int = 0.0655, 
                                        min_pay = 95.80, fixed = T, months_left = 85))
 
 loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = NA, int_tiebreak = "higher balance")
         
-loans_pay800 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 600, int_tiebreak = "higher balance")
- 
+loans_pay600 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 600, int_tiebreak = "higher balance")
+
 ```
 
 ```{r}
@@ -37,6 +37,15 @@ loan_info_list2 <- list(salliemae = list(name = "sofi", bal = 23746.19, int = 0.
 loan_info_list3 <- list(salliemae = list(name = "sofi", bal = 27712.18, int = 0.04375, min_pay = 444.05, fixed = T))
 
 ```
+
+```{r}
+loan_info_refi <- list(list(name = "navient2", bal = 3911.15, int = 0.0315, min_pay = 54.32),
+                       list(name = "commonbond", bal = 23499.48, int = 0.0454, min_pay = 442.92))
+
+loans_pay_refi <- conduct_schedule_analysis(loan_info_refi, max_mo_pay = NA, int_tiebreak = "higher balance")
+
+```
+
 
 # Plots
 
@@ -58,6 +67,18 @@ payoff_options <- get_payoff_options(loan_info_list)
 plot_payoff_options(payoff_options)
 ```
 
+# Fix bug
+
+```{r}
+x <- list(salliemae = list(name = "Sallie Mae", bal = 14707.01, int = 0.04375,
+                           min_pay = 207.97, fixed = F, months_left = NA),
+          navient1 = list(name = "Navient 1", bal = 2575.84, int = 0.0535,
+                          min_pay = 38.04, fixed = T, months_left = 85),
+          navient2 = list(name = "Navient 2", bal = 3965.99, int = 0.0315,
+                          min_pay = 54.32, fixed = T, months_left = 85))
+
+payoff_opt <- get_payoff_options(x)
+```
 
 
 # Notes
