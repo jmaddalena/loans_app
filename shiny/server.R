@@ -186,8 +186,6 @@ server <- function(input, output) {
     
     data <- options_plot_data()
     
-    print(data)
-    
     click_val <- mo_pay_choice()
     
     values <- data %>% 
