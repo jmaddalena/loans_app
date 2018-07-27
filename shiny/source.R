@@ -1,231 +1,228 @@
-payment_sched_mo_pay <- function(balance, int, mo_payment){
+calc_mo_pay = function(start_balance, int, payment){
   
-  df_full <- data.frame(month = 0, int_pay = 0, prin_pay = 0, 
-                        total_pay = 0, balance = balance, start_balance = NA)
+  int_pay = start_balance*int/12
+  prin_pay = payment - int_pay
+  total_pay = int_pay + prin_pay
   
-  month <- 1
+  new_balance = start_balance - prin_pay
   
-  new_balance <- balance
-  
-  while(new_balance > 0.0001){
-    
-    start_balance <- df_full$balance[df_full$month == month - 1]
-    
-    int_pay <- start_balance*int/12
-    
-    if(start_balance + int_pay < mo_payment){
-      mo_payment <- start_balance + int_pay
-    }
-    
-    prin_pay <- mo_payment - int_pay
-    
-    new_balance <- start_balance - prin_pay
-    
-    df <- data.frame(month = month, int_pay = int_pay, prin_pay = prin_pay, 
-                     total_pay = mo_payment, balance = new_balance, start_balance = start_balance)
-    
-    df_full <- rbind(df_full, df)
-    
-    month <- month + 1
-    
+  if(new_balance < 0){
+    payment = start_balance + int_pay
+    new_balance = 0
   }
   
-  df_full
+  data.frame("payment" = payment, "old_balance" = start_balance, 
+             "new_balance" = new_balance, "int_pay" = int_pay)
   
 }
 
-calculate_schedule <- function(loan_info_df, loan_name, payoff_months = NA, mo_payment = NA){
+conduct_schedule_analysis = function(loan_info_list, max_mo_pay = NA, 
+                                     int_tiebreak = "higher balance"){
   
-  if(all(is.na(c(payoff_months, mo_payment)))) stop("Must specify payoff months or monthly payment")
-  else if(sum(is.na(c(payoff_months, mo_payment))) !=1) stop("Can't specify both payoff months and monthly payment")
-  
-  balance <- loan_info_df %>%
-    filter(name == loan_name) %>%
-    pull(bal)
-  
-  if(length(balance) > 1) stop("Loans have same names, maybe?")
-  
-  int = loan_info_df %>%
-    filter(name == loan_name) %>%
-    pull(int)
-  
-  if(!is.na(mo_payment)){
-    payment_sched_mo_pay(balance = balance, int = int, mo_payment = mo_payment)
-  } else {
-    payment_sched_months(balance = balance, int = int, payoff_months = payoff_months)
-  }
-}
-
-
-conduct_schedule_analysis <- function(loan_info_list, max_mo_pay, int_tiebreak = "higher balance"){
-  
-  loan_info_df <- purrr::map_df(loan_info_list, function(sublist){ 
+  loan_info_df = purrr::map_df(loan_info_list, function(sublist){ 
     data.frame(sublist, stringsAsFactors = F)
   })
   
   if(int_tiebreak == "higher balance"){
-    loan_df_sort <- loan_info_df %>%
-      arrange(desc(int), desc(bal))
+    loan_df_sort = loan_info_df %>%
+      arrange(desc(int), desc(balance))
   } else if(int_tiebreak == "lower balance"){
-    loan_df_sort <- loan_info_df %>%
-      arrange(desc(int), bal)
+    loan_df_sort = loan_info_df %>%
+      arrange(desc(int), balance)
   } else {
-    loan_df_sort <- loan_info_df %>%
-      arrange(desc(int), desc(bal))
+    loan_df_sort = loan_info_df %>%
+      arrange(desc(int), desc(balance))
     warning("No proper tiebreaker defined")
   }
   
-  #print(loan_df_sort)
+  if(!is.na(max_mo_pay) && max_mo_pay < sum(loan_df_sort$min_pay)){
+    stop("you have entered a maximum monthly payment that is ",
+         "lower than the total minimum loan payments")
+  }
+  
   
   orig_order <- loan_df_sort$name
   
-  all_extra_pay_sched <- NULL
-  all_others_pay_sched <- NULL
+  month = 1
   
-  for(i in 1:nrow(loan_df_sort)){
-    #print(sprintf("analyzing loan %s", orig_order[i]))
-    new_order <- loan_df_sort$name
-    
-    min_pay <- sum(loan_df_sort$min_pay)
-    #print(sprintf("minimum payments on all loans: $%0.2f", min_pay))
+  total_balance = sum(loan_df_sort$balance)
+  
+  all_payment_df = NULL
+  
+  while(total_balance > 0){
     
     if(!is.na(max_mo_pay)){
-      extra_pay_loan <- round(max_mo_pay - min_pay, 2)
-      
-      if(extra_pay_loan < 0) stop("you have entered a maximum monthly payment that is lower than the total minimum loan payments")
+      overpay_loan = loan_df_sort$name[1]
+      if(nrow(loan_df_sort) > 1){
+        non_overpay_loans = loan_df_sort$name[-1]
+        next_overpay = loan_df_sort$name[2]
+      } else {
+        non_overpay_loans = NULL
+        next_overpay = NULL
+      }
     } else {
-      extra_pay_loan <- 0  
+      overpay_loan = NULL
+      next_overpay = NULL
+      non_overpay_loans = loan_df_sort$name
     }
     
-    min_pay_loan <- loan_df_sort$min_pay[1]
-   # print(sprintf("minimum payments on this loan: $%0.2f", min_pay_loan))
+    # print(overpay_loan)
+    # print(non_overpay_loans)
     
-    loan_pay_name <- loan_df_sort[1, "name"]
-    
-   # print("calculating schedule")
-    
-    extra_pay_sched <- calculate_schedule(loan_df_sort, 
-                                          loan_name = loan_pay_name, 
-                                          mo_payment = extra_pay_loan + min_pay_loan) %>%
-      mutate(name = loan_pay_name, 
-             extra_pay = extra_pay_loan,
-             df_orig = "extra_pay")
-    
-   #print(head(extra_pay_sched))
-    
-    last_extra_pay <- extra_pay_sched$total_pay[nrow(extra_pay_sched)] - min_pay_loan
-    
-    if(last_extra_pay < 0) last_extra_pay <- 0
-    
-    #print(sprintf("Last extra payment: $%0.2f", last_extra_pay))
-    
-    if(last_extra_pay < 0) last_extra_pay <- 0
-    extra_pay_sched$extra_pay[nrow(extra_pay_sched)] = last_extra_pay
-    
-    all_extra_pay_sched <- bind_rows(all_extra_pay_sched, extra_pay_sched)
-    
-    payoff_mos <- max(extra_pay_sched$month)
-    
-    #print(sprintf("payoff_mos: %s", payoff_mos))
-    
-    leftover_last_pay <- min_pay_loan + extra_pay_loan - tail(all_extra_pay_sched$total_pay, 1)
-    
-    #print(sprintf("left_over_last_pay: %s", leftover_last_pay))
-    
-    if(nrow(loan_df_sort) > 1){
-      others <- loan_df_sort[2:nrow(loan_df_sort), "name"]
-      
-      #print(sprintf("now calculating concurrent payments for %s", paste(others, collapse = ", ")))
-      
-      others_pay_sched <- purrr::map_df(others, function(loan_name){
-
-        min_pay <- loan_df_sort[loan_df_sort$name == loan_name, "min_pay"]
+    if(length(non_overpay_loans)>0){
+      min_pay_df = purrr::map_df(non_overpay_loans, function(loan_name){
+        # print(loan_name)
         
-        #print(sprintf("min pay for loan %s: %s", loan_name, min_pay))
+        loan_row = loan_df_sort %>% filter(name == loan_name)
         
-        sched <- calculate_schedule(loan_df_sort, 
-                                    loan_name = loan_name, 
-                                    mo_payment = min_pay)
-        
-        
-        #print(sprintf("min pay for loan %s: %s", loan_name, min_pay))
-        
-        sched <- sched[sched$month %in% 1:payoff_mos, ]
-        sched$name <- loan_name
-        sched$extra_pay <- 0
-        sched$df_orig <- "other"
-        sched
+        calc_mo_pay(start_balance = loan_row$balance, 
+                    int = loan_row$int, payment = loan_row$min_pay) %>%
+          mutate(name = loan_name, type = "min_payment",
+                 min_pay = min(loan_row$min_pay, payment),
+                 month = month)
       })
       
-      if(!is.na(max_mo_pay)){
-        
-        ### I need to first determine if the balance is 0, no more payments needed
-        
-        #print("calculating leftover extra payment")
-        
-        which_row_leftover <- which(others_pay_sched$name == orig_order[i + 1] &
-                                      others_pay_sched$month == max(others_pay_sched$month))
-        
-        #print(sprintf("leftover row from others_pay: %s", which_row_leftover))
-        
-        #print(others_pay_sched[which_row_leftover,])
-        
-        orig_prin <- others_pay_sched$prin_pay[which_row_leftover]
-        last_balance <- others_pay_sched$start_balance[which_row_leftover]
-        int_pay <- others_pay_sched$int_pay[which_row_leftover]
-        
-        ## temporary fix, if others_pay_sched is only one row to cover small last payment
-        #if(length(last_balance) == 0) last_balance <- others_pay_sched$total_pay[which_row_leftover]
-        
-        if(leftover_last_pay + orig_prin + int_pay > last_balance)
-          leftover_last_pay <- max(0, last_balance - orig_prin - int_pay)
-        
-        others_pay_sched$extra_pay[which_row_leftover] <- leftover_last_pay
-        others_pay_sched$prin_pay[which_row_leftover] <- leftover_last_pay + orig_prin
-        others_pay_sched$total_pay[which_row_leftover] <- leftover_last_pay + orig_prin + int_pay
-        
-        others_pay_sched$balance[which_row_leftover] <- last_balance - others_pay_sched$total_pay[which_row_leftover]
-        
-      } 
+    } else {
       
-      all_others_pay_sched <- bind_rows(all_others_pay_sched, others_pay_sched)
+      min_pay_df <- NULL
       
-      others_summ <- others_pay_sched %>%
-        group_by(name) %>%
-        summarize(final_bal = min(balance))
-      
-      loan_df_sort <- loan_df_sort[-1, ]
-      
-      loan_df_sort <- merge(loan_df_sort, others_summ, by = "name") %>%
-        mutate(bal = final_bal) %>%
-        arrange(desc(int), desc(bal)) %>%
-        select(name, bal, int, min_pay)
     }
+    
+    total_min_pay = sum(min_pay_df$payment)
+    
+    redirect_overpay = NULL
+    
+    if(length(overpay_loan)>0){
+      overpay = max_mo_pay - total_min_pay 
+      
+      if(overpay < 0){
+        overpay_df = NULL
+      } else {
+        loan_row = loan_df_sort %>% filter(name == overpay_loan)
+        overpay_df = calc_mo_pay(start_balance = loan_row$balance, 
+                                 int = loan_row$int, payment = overpay) %>%
+          mutate(month = month,
+                 name = overpay_loan, 
+                 min_pay = min(loan_row$min_pay, payment),
+                 type = "overpay")
+        
+        if(overpay_df$payment < overpay){
+          redirect_overpay = overpay - overpay_df$payment
+          #print(sprintf("redirect overpay: %s", redirect_overpay))
+        }
+      }
+      
+      payment_df = bind_rows(min_pay_df, overpay_df) %>% 
+        mutate(month = month)
+      
+      # if leftover extra pay from overpay loan 
+      if(length(redirect_overpay)>0 & length(next_overpay)>0){
+        orig_payment = payment_df %>%
+          filter(name == next_overpay) %>%
+          pull(payment)
+        
+        
+        loan_row = loan_df_sort %>% filter(name == next_overpay)
+        
+        redo_pay = calc_mo_pay(start_balance = loan_row$balance, 
+                               int = loan_row$int, payment = orig_payment + redirect_overpay) %>%
+          mutate(name = next_overpay, type = "min_payment",
+                 min_pay = min(orig_payment + redirect_overpay, loan_row$min_pay),
+                 month = month)
+        
+        payment_df = payment_df %>%
+          filter(name != next_overpay) %>%
+          bind_rows(redo_pay)
+        
+      }
+      
+    } else {
+      payment_df = min_pay_df  
+    }
+    
+    all_payment_df = bind_rows(all_payment_df, payment_df)
+    
+    update_loan_df = left_join(loan_df_sort, payment_df %>% select(name, new_balance), by = "name")
+    
+    loan_df_sort = update_loan_df %>% 
+      mutate(balance = new_balance) %>%
+      select(-new_balance) %>%
+      filter(balance > 0)
+    
+    total_balance = sum(loan_df_sort$balance)
+    
+    #print(total_balance)
+    
+    month = month + 1
+    
   }
   
-  extra_pay_df <- all_extra_pay_sched %>%
-    filter(month != 0) %>%
-    mutate(month_count = 1:n())
+  all_payment_df %>%
+    mutate(name = factor(name, levels = orig_order)) 
+}
+
+plot_mo_payments = function(payment_sched){
   
-  if(length(orig_order)>1){
-    min_pay_df <- all_others_pay_sched %>%
-      filter(month != 0) %>%
-      group_by(name) %>%
-      arrange(name, desc(balance)) %>%
-      mutate(month_count = 1:n())
-    
-    all_payments <- bind_rows(extra_pay_df, min_pay_df) %>%
-      mutate(name = factor(name, levels = orig_order)) 
-    
-  } else {
-    all_payments <- extra_pay_df %>%
-      mutate(name = factor(name, levels = orig_order)) 
-  }
+  min_pay = payment_sched %>% 
+    group_by(month) %>% 
+    summarize(min_pay_mo = sum(min_pay))
   
-  sched <- all_payments %>%
-    arrange(name, month_count)
+  cols = c("#11CEC4", "#218ED2", "#3250D6", "#6A43DA", 
+           "#B455DE", "#E267D2", "#E67AA9", "#EB8EBE")
   
-  sched
+  cols_use_seq = seq(1, 8, by = floor(8/length(unique(payment_sched$name))))
+  
+  cols_use = cols[cols_use_seq]
+  
+  ggplot(payment_sched, aes(x = month, y = payment)) +
+    geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
+    geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
+    ylab("Total Monthly Payment") +
+    labs(x = "Month from now", y = "Monthly Payment ($)") +
+    scale_fill_manual("", values = cols_use) +
+    scale_x_continuous(breaks = seq(12, max(payment_sched$month), by = 12)) +
+    ggthemes::scale_color_gdocs()
+  
+}
+
+
+plot_mo_payments2 = function(payment_sched){
+  
+  min_pay = payment_sched %>%
+    group_by(month) %>%
+    summarize(min_pay_mo = sum(min_pay))
+  
+  pay_order <- levels(payment_sched$name)
+  
+  
+  payment_sched <- payment_sched %>%
+    ungroup() %>%
+    mutate(overpay = payment - min_pay) %>%
+    gather(group, pay_amount, min_pay, overpay) %>%
+    filter(!(group == "overpay" & pay_amount == 0)) %>%
+   # mutate(group = factor(group, levels = c("min_pay", "overpay"), 
+  #                        labels = c("minimum payment", "overpayment"))) %>%
+   arrange(name, group) %>%
+   mutate(name2 = sprintf("%s %s", name, group))
+  
+ return(payment_sched)
+  
+  cols = c("#11CEC4", "#218ED2", "#3250D6", "#6A43DA", 
+           "#B455DE", "#E267D2", "#E67AA9", "#EB8EBE")
+  
+  cols_use_seq = seq(1, 8, by = floor(8/length(unique(payment_sched$name))))
+  
+  cols_use = cols[cols_use_seq]
+
+  ggplot(payment_sched, aes(x = month, y = pay_amount, group = name2)) +
+    geom_bar(stat = "identity", aes(fill = name, alpha = group), color = "white") +
+    #  geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
+    ylab("Total Monthly Payment") +
+    labs(x = "Month from now", y = "Monthly Payment ($)") +
+    scale_fill_manual("", values = cols_use) +
+    scale_alpha_manual("", values = c(1, .6)) + 
+    theme_minimal() +
+    scale_x_continuous(breaks = seq(12, max(payment_sched$month), by = 12))
   
 }
 
@@ -235,12 +232,7 @@ get_payoff_options <- function(loan_info_list){
     sub_list[["min_pay"]]
   }) %>% unlist %>% sum
   
-  print("min_pay"); print(min_pay)
-  
   start_50 <- min_pay - min_pay %% 50 + 50
-  
-  print(min_pay)
-  print(start_50)
   
   if(abs(min_pay - start_50) < 20) start_50 <- start_50 + 50
   
@@ -248,46 +240,61 @@ get_payoff_options <- function(loan_info_list){
   
   all_payoff_options <- purrr::map_df(mo_pay_try, function(mo_pay){
     
-   # #print(sprintf("mo_pay_iter: %s", mo_pay))
+    #print(sprintf("mo_pay_iter: %s", mo_pay))
     
     sched_df <- conduct_schedule_analysis(loan_info_list = loan_info_list, 
                                           max_mo_pay = mo_pay, 
                                           int_tiebreak = "higher balance")
     
     sched_df %>%
-      summarize(`Months to pay off` = max(month_count),
+      summarize(`Months to pay off` = max(month),
                 `Total interest to be paid` = sum(int_pay)) %>%
       mutate(mo_pay = mo_pay)
   })
   
 }
 
-plot_mo_payments <- function(payment_sched){
+plot_payoff_options <- function(payoff_options){
   
-  min_pay <- payment_sched %>% 
-    mutate(min = total_pay - extra_pay) %>% 
-    group_by(month_count) %>% 
-    summarize(min_pay_mo = sum(min))
+  maxval <- max(payoff_options$mo_pay, na.rm = T)
   
-  print(min_pay)
+  curr_pay <- payoff_options$mo_pay[2]
   
-  cols <- c("#11CEC4", "#218ED2", "#3250D6", "#6A43DA", 
-            "#B455DE", "#E267D2", "#E67AA9", "#EB8EBE")
+  all_gather <- payoff_options %>% 
+    filter(!is.na(mo_pay)) %>%
+    gather(group, value, -mo_pay) %>%
+    mutate(value_lab = case_when(group == "Months to pay off" ~ as.character(value),
+                                 TRUE ~ sprintf("$%0.2f", value)))
   
-  cols_use_seq <- seq(1, 8, by = floor(8/length(unique(payment_sched$name))))
+  start_x <- payoff_options$mo_pay[2]
+  put_text <- start_x + .5*(maxval - start_x)
   
-  cols_use <- cols[cols_use_seq]
+  baremin_gather <- payoff_options %>%
+    filter(is.na(mo_pay)) %>%
+    gather(group, value, -mo_pay) %>%
+    mutate(value_lab = round(value),
+           padding = .07*value,
+           nudge_x = .05*(maxval - start_x))
   
-  ggplot(payment_sched, aes(x = month_count, y = total_pay)) +
-    geom_bar(stat = "identity", color = "white", aes(fill = name)) +
-    geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
-    ylab("Total Monthly Payment") +
-    labs(x = "Month from now", y = "Monthly Payment ($)") +
-    scale_fill_manual("", values = cols_use) +
-    theme_minimal() +
-    scale_x_continuous(breaks = seq(12, max(payment_sched$month_count), by = 12))
+  print(baremin_gather)
   
+  ggplot(all_gather, aes(x = mo_pay, y = value)) + 
+    facet_wrap(~group, scales = "free_y", ncol = 2) +
+    geom_line() +
+    geom_point() +
+    geom_text(data = baremin_gather, position = "dodge",
+              aes(x = put_text, y = value + padding, 
+                  label = "Making no overpayments"), size = 4, col = "red") +
+    geom_text(data = baremin_gather, position = "dodge",
+              aes(x = put_text, y = value + padding/3), 
+                  label = sprintf("(Currently $%0.2f)", curr_pay), size = 3, col = "red") +
+    geom_hline(data = baremin_gather, aes(yintercept = value), col = "red") +
+    geom_hline(aes(yintercept = 0), col = NA) +
+    labs(x = "Total monthly payments", y = "") +
+    lims(x = c(start_x, maxval)) + 
+    scale_x_continuous(labels = scales::dollar_format(prefix="$")) 
 }
+
 
 
 
