@@ -1,0 +1,10 @@
+name: shiny
+title:
+username:
+account: jmaddalena
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 389146
+bundleId: 1502951
+url: https://jmaddalena.shinyapps.io/shiny/
+when: 1532664321.66357
