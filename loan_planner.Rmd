@@ -4,47 +4,40 @@ output: html_notebook
 ---
 
 ```{r}
+x <- list(salliemae = list(name = "Commonbond", balance = 14294.65, int = 0.0445,
+                           min_pay = 275.54, fixed = F, months_left = NA),
+          navient1 = list(name = "Navient 1", balance = 2414.92, int = 0.0535,
+                          min_pay = 38.04, fixed = T, months_left = 85),
+          navient2 = list(name = "Navient 2", balance = 3701.35, int = 0.0315,
+                          min_pay = 54.32, fixed = T, months_left = 85),
+          navient3 = list(name = "Navient 3", balance = 1012, int = 0.0655,
+                          min_pay = 31.09, fixed = T, months_left = 85),
+          navient4 = list(name = "Navient 4", balance = 3828.29, int = 0.0655,
+                          min_pay = 95.80, fixed = T, months_left = 85))
+```
+
+
+```{r}
 library(lubridate)
 library(tidyverse)
 
-source("source.R")
+source("shiny/source_iter.R")
 ```
 
 # Loan Info Lists
 
 ```{r}
-loan_info_list <- list(salliemae = list(name = "salliemae", bal = 14707.01, int = 0.04375, 
-                                        min_pay = 207.97, fixed = F, months_left = NA),
-                       navient1 = list(name = "navient1", bal = 2542.98, int = 0.0535, 
-                                       min_pay = 38.04, fixed = T, months_left = 85),
-                       navient2 = list(name = "navient2", bal = 3911.15, int = 0.0315, 
-                                       min_pay = 54.32, fixed = T, months_left = 85),
-                       navient3 = list(name = "navient3", bal = 1893.53, int = 0.0655, 
-                                       min_pay = 31.09, fixed = T, months_left = 85),
-                       navient4 = list(name = "navient4", bal = 4355.96, int = 0.0655, 
-                                       min_pay = 95.80, fixed = T, months_left = 85))
-
-loans_as_is <- conduct_schedule_analysis(loan_info_list, max_mo_pay = NA, int_tiebreak = "higher balance")
+loans_as_is <- conduct_schedule_analysis(x, max_mo_pay = NA, int_tiebreak = "higher balance")
         
-loans_pay600 <- conduct_schedule_analysis(loan_info_list, max_mo_pay = 600, int_tiebreak = "higher balance")
+loans_pay600 <- conduct_schedule_analysis(x, max_mo_pay = 650, int_tiebreak = "higher balance")
+
+
+ggplot(loans_pay600, aes(x = month, y = new_balance, fill = name)) + 
+  geom_bar(stat = "identity") +
+  labs("Total loan balance")
 
 ```
 
-```{r}
-loan_info_list2 <- list(salliemae = list(name = "sofi", bal = 23746.19, int = 0.04375, min_pay = 444.05, fixed = T),
-                   navient2 = list(name = "navient2", bal = 3965.99, int = 0.0315, min_pay = 54.32, fixed = T))
-  
-loan_info_list3 <- list(salliemae = list(name = "sofi", bal = 27712.18, int = 0.04375, min_pay = 444.05, fixed = T))
-
-```
-
-```{r}
-loan_info_refi <- list(list(name = "navient2", bal = 3911.15, int = 0.0315, min_pay = 54.32),
-                       list(name = "commonbond", bal = 23499.48, int = 0.0454, min_pay = 442.92))
-
-loans_pay_refi <- conduct_schedule_analysis(loan_info_refi, max_mo_pay = NA, int_tiebreak = "higher balance")
-
-```
 
 
 # Plots
@@ -52,17 +45,12 @@ loans_pay_refi <- conduct_schedule_analysis(loan_info_refi, max_mo_pay = NA, int
 Plot of balances and payments over time:
 
 ```{r}
-plot_schedules(loans_as_is)
-```
-
-```{r}
 plot_mo_payments(loans_pay800)
 ```
 
 
-
 ```{r}
-payoff_options <- get_payoff_options(loan_info_list)
+payoff_options <- get_payoff_options(x)
 
 plot_payoff_options(payoff_options)
 ```

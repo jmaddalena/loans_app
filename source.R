@@ -148,10 +148,12 @@ conduct_schedule_analysis <- function(loan_info_list, max_mo_pay, int_tiebreak =
   
     leftover_last_pay <- min_pay_loan + extra_pay_loan - tail(all_extra_pay_sched$total_pay, 1)
     
-   # print("left_over_last_pay") ; print(leftover_last_pay)
-        
     if(nrow(loan_df_sort) > 1){
       others <- loan_df_sort[2:nrow(loan_df_sort), "name"]
+      
+      print("others")
+      print(others)
+      
       others_pay_sched <- purrr::map_df(others, function(loan_name){
         min_pay <- loan_df_sort[loan_df_sort$name == loan_name, "min_pay"]
         sched <- calculate_schedule(loan_df_sort, 
@@ -281,9 +283,6 @@ plot_mo_payments <- function(payment_sched){
 
 get_payoff_options <- function(loan_info_list){ 
 
-  print("here")
-  print(loan_info_list)
-  
   min_pay <- lapply(loan_info_list, function(sub_list){
     sub_list[["min_pay"]]
   }) %>% unlist %>% sum
@@ -293,8 +292,6 @@ get_payoff_options <- function(loan_info_list){
   start_50 <- min_pay - min_pay %% 50 + 50
 
   mo_pay_try <- c(NA, min_pay, seq(start_50, ceiling(start_50+500), by = 50))
-
-  print("mo_pay_try") ; print(mo_pay_try)
     
   all_payoff_options <- purrr::map_df(mo_pay_try, function(mo_pay){
     
@@ -313,41 +310,6 @@ get_payoff_options <- function(loan_info_list){
   })
   
 }
-
-plot_payoff_options <- function(payoff_options){
-  
-  maxval <- max(payoff_options$mo_pay)
-  
-  all_gather <- payoff_options %>% 
-    filter(!is.na(mo_pay)) %>%
-    gather(group, value, -mo_pay) %>%
-    mutate(value_lab = case_when(group == "Months to pay off" ~ as.character(value),
-                                 TRUE ~ sprintf("$%0.2f", value)))
-  
-  start_x <- payoff_options$mo_pay[2]
-  put_text <- start_x + .5*(maxval - start_x)
-  
-  baremin_gather <- payoff_options %>%
-    filter(is.na(mo_pay)) %>%
-    gather(group, value, -mo_pay) %>%
-    mutate(value_lab = round(value),
-           padding = .025*value,
-           nudge_x = .05*(maxval - start_x))
-  
-  ggplot(all_gather, aes(x = mo_pay, y = value)) + 
-    facet_wrap(~group, scales = "free_y", ncol = 2) +
-    geom_line() +
-    geom_point() +
-   # geom_text(aes(label = value_lab, vjust = 0, hjust = .5), size = 4) +
-    geom_text(data = baremin_gather, position = "dodge",
-              aes(x = put_text, y = value + padding, 
-                  label = "Making no overpayments"), col = "red") +
-    geom_hline(data = baremin_gather, aes(yintercept = value), col = "red") +
-    geom_hline(aes(yintercept = 0), col = NA) +
-    labs(x = "Total monthly payments", y = "") +
-    lims(x = c(start_x, maxval))
-}
-
 
 
 
