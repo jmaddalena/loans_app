@@ -23,124 +23,139 @@ server <- function(input, output){
     print("Processing options")
   })
   
-  counter <- reactiveValues(n = 1)
-  
-  #Track the number of input boxes previously
-  prevcount <- reactiveValues(n = 1)
+  counter <- reactiveValues(n = 0)
   
   observeEvent(input$add_loan, {
     if(input$fillin) counter$n <- min(length(x), counter$n + 1)
     else counter$n <- counter$n + 1
-    prevcount$n <- counter$n - 1
-    
+
     print(sprintf("count: %s", counter$n))
-    print(sprintf("prevcount: %s", prevcount$n))
   })
   
   observeEvent(input$minus_loan, {
     counter$n <- counter$n - 1
-    prevcount$n <- counter$n + 1
-    
     print(sprintf("count: %s", counter$n))
-    print(sprintf("prevcount: %s", prevcount$n))
   })
   
-  more_loans <- reactive({
-    
-    n <- counter$n
-    
-    if (n > 0) {
-      
-      if(input$fillin){
-        lapply(seq_len(n), function(i) {
-          list(h4(sprintf("Loan #%s", i)),
-               textInput(word_num("loan", i), label = "Name", value = x[[i]]$name),
-               numericInput(word_num("bal", i), label = "Remaining balance", value = x[[i]]$bal, min = 0, step = 20),
-               numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = x[[i]]$min_pay, min = 10, step = 5),
-               numericInput(word_num("int", i), label = "Interest Rate", value = x[[i]]$int, min = 0, max = 1, step = 0.01),
-               br())
-        })
-        
-      } else if(!input$fillin & counter$n == 1) {
-        
-        list(
-          list(h4(sprintf("Loan #%s", 1)),
-               textInput(word_num("loan", 1), label = "Name", value = NA),
-               numericInput(word_num("bal", 1), label = "Remaining balance", value = NA, min = 0, step = 20),
-               numericInput(word_num("min_pay", 1), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
-               numericInput(word_num("int", 1), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
-               br())
-        )
-      
-      } else if(counter$n <= prevcount$n){ # deleted loan but not filling in numbers
-        
-        loan_vals <- loan_list()
-        
-        print(loan_vals)
-        
-        lapply(seq_len(n), function(i) {
-          list(h4(sprintf("Loan #%s", i)),
-               textInput(word_num("loan", i), label = "Name", value = loan_vals[[i]]$name),
-               numericInput(word_num("bal", i), label = "Remaining balance", value = loan_vals[[i]]$bal, min = 0, step = 20),
-               numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = loan_vals[[i]]$min_pay, min = 10, step = 5),
-               numericInput(word_num("int", i), label = "Interest Rate", value = loan_vals[[i]]$int, min = 0, max = 1, step = 0.01),
-               br())
-        })
-        
-      } else {  # added loan and not filling in numbers
-        
-        lapply(seq_len(n), function(i) {
-          
-          print(i)
-          
-          if(i > prevcount$n){ # make new blank loan
-            
-            print("i > prevcount")
-            
-            list(h4(sprintf("Loan #%s", i)),
-                 textInput(word_num("loan", i), label = "Name", value = NA),
-                 numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
-                 numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
-                 numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
-                 br())
-          
-          } else {  # keep old specified loans
-            
-            print("else")
-            
-            ## this doesn't work because loan_list() doesn't exist until submitted
-            loan_vals <- loan_list()
-          
-            list(h4(sprintf("Loan #%s", i)),
-                 textInput(word_num("loan", i), label = "Name", value = loan_vals[[i]]$name),
-                 numericInput(word_num("bal", i), label = "Remaining balance", value = loan_vals[[i]]$bal, min = 0, step = 20),
-                 numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = loan_vals[[i]]$min_pay, min = 10, step = 5),
-                 numericInput(word_num("int", i), label = "Interest Rate", value = loan_vals[[i]]$int, min = 0, max = 1, step = 0.01),
-                 br())          
-          }
-        })
-      }
-    }
-  })
+  # more_loans <- reactive({
+  #   
+  #   n <- counter$n
+  #   
+  #   if (n > 0) {
+  #     
+  #     if(input$fillin){
+  #       lapply(seq_len(n), function(i) {
+  #         list(h4(sprintf("Loan #%s", i)),
+  #              textInput(word_num("loan", i), label = "Name", value = x[[i]]$name),
+  #              numericInput(word_num("bal", i), label = "Remaining balance", value = x[[i]]$bal, min = 0, step = 20),
+  #              numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = x[[i]]$min_pay, min = 10, step = 5),
+  #              numericInput(word_num("int", i), label = "Interest Rate", value = x[[i]]$int, min = 0, max = 1, step = 0.01),
+  #              br())
+  #       })
+  #       
+  #     } else if(!input$fillin & counter$n == 1) {
+  #       
+  #       list(
+  #         list(h4(sprintf("Loan #%s", 1)),
+  #              textInput(word_num("loan", 1), label = "Name", value = NA),
+  #              numericInput(word_num("bal", 1), label = "Remaining balance", value = NA, min = 0, step = 20),
+  #              numericInput(word_num("min_pay", 1), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+  #              numericInput(word_num("int", 1), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
+  #              br())
+  #       )
+  #     
+  #     } else if(counter$n <= prevcount$n){ # deleted loan but not filling in numbers
+  #       
+  #       loan_vals <- loan_list()
+  #       
+  #       print(loan_vals)
+  #       
+  #       lapply(seq_len(n), function(i) {
+  #         list(h4(sprintf("Loan #%s", i)),
+  #              textInput(word_num("loan", i), label = "Name", value = loan_vals[[i]]$name),
+  #              numericInput(word_num("bal", i), label = "Remaining balance", value = loan_vals[[i]]$bal, min = 0, step = 20),
+  #              numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = loan_vals[[i]]$min_pay, min = 10, step = 5),
+  #              numericInput(word_num("int", i), label = "Interest Rate", value = loan_vals[[i]]$int, min = 0, max = 1, step = 0.01),
+  #              br())
+  #       })
+  #       
+  #     } else {  # added loan and not filling in numbers
+  #       
+  #       lapply(seq_len(n), function(i) {
+  #         
+  #         print(i)
+  #         
+  #         if(i > prevcount$n){ # make new blank loan
+  #           
+  #           print("i > prevcount")
+  #           
+  #           list(h4(sprintf("Loan #%s", i)),
+  #                textInput(word_num("loan", i), label = "Name", value = NA),
+  #                numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
+  #                numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+  #                numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
+  #                br())
+  #         
+  #         } else {  # keep old specified loans
+  #           
+  #           print("else")
+  #           
+  #           ## this doesn't work because loan_list() doesn't exist until submitted
+  #           loan_vals <- loan_list()
+  #         
+  #           list(h4(sprintf("Loan #%s", i)),
+  #                textInput(word_num("loan", i), label = "Name", value = loan_vals[[i]]$name),
+  #                numericInput(word_num("bal", i), label = "Remaining balance", value = loan_vals[[i]]$bal, min = 0, step = 20),
+  #                numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = loan_vals[[i]]$min_pay, min = 10, step = 5),
+  #                numericInput(word_num("int", i), label = "Interest Rate", value = loan_vals[[i]]$int, min = 0, max = 1, step = 0.01),
+  #                br())          
+  #         }
+  #       })
+  #     }
+  #   }
+  # })
+  # 
+  # output$more_loans_ui <- renderUI({ more_loans() })
   
-  output$more_loans_ui <- renderUI({ more_loans() })
+  # loan_list <- eventReactive(input$submit, {
+  #   loans <- purrr::map(1:(counter$n), function(num){
+  #     
+  #     list(name = input[[word_num("loan", num)]], 
+  #          balance = input[[word_num("bal", num)]],
+  #          int = input[[word_num("int", num)]],
+  #          min_pay = input[[word_num("min_pay", num)]])
+  #   })
+  #   
+  #   any_miss <- any(unlist(lapply(loans, function(sub) any(is.na(sub)))))
+  #   
+  #   validate(
+  #     need(!any_miss, "Please fill in missing inputs")
+  #   )
+  #   
+  #   loans
+  # })
   
-  loan_list <- eventReactive(input$submit, {
-    loans <- purrr::map(1:(counter$n), function(num){
-      
-      list(name = input[[word_num("loan", num)]], 
-           balance = input[[word_num("bal", num)]],
-           int = input[[word_num("int", num)]],
-           min_pay = input[[word_num("min_pay", num)]])
-    })
+  observeEvent(input$add_loan, {
+    i <- counter$n
     
-    any_miss <- any(unlist(lapply(loans, function(sub) any(is.na(sub)))))
-    
-    validate(
-      need(!any_miss, "Please fill in missing inputs")
+    insertUI(
+      selector = "#add_loan", 
+      where = "beforeBegin",
+      ui = tags$div(id = sprintf("loan_%s", i),
+                      h4(sprintf("Loan #%s", i)),
+                      textInput(word_num("loan", i), label = "Name", value = ""),
+                      numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
+                      numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+                      numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
+                      br()) 
     )
-    
-    loans
+  })
+  
+  observeEvent(input$minus_loan, {
+    i <- counter$n
+    remove_loan <- sprintf("#loan_%s", i+1)
+    print(remove_loan)
+    removeUI(selector = remove_loan)
   })
   
   options_plot_data <- eventReactive(input$submit, {
@@ -310,11 +325,9 @@ ui <- fluidPage(
       ),
       
       checkboxInput("fillin", "Fill in example loan figures?", value = TRUE),
-      uiOutput("more_loans_ui"),
       actionButton("add_loan", label = "", icon = icon("plus-square")),
       actionButton("minus_loan", label = "", icon = icon("minus-square")),
       actionButton("submit", "Show me my options")
-      
     ),
     
     mainPanel(

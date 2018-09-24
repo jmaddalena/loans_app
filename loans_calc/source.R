@@ -40,7 +40,6 @@ conduct_schedule_analysis = function(loan_info_list, max_mo_pay = NA,
          "lower than the total minimum loan payments")
   }
   
-  
   orig_order <- loan_df_sort$name
   
   month = 1
