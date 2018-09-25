@@ -2,16 +2,11 @@ library(shiny)
 library(tidyverse)
 source("source.R")
 
-x <- list(salliemae = list(name = "Commonbond", balance = 14294.65, int = 0.0445,
-                           min_pay = 275.54, fixed = F, months_left = NA),
-          navient1 = list(name = "Navient 1", balance = 2414.92, int = 0.0535,
-                          min_pay = 38.04, fixed = T, months_left = 85),
-          navient2 = list(name = "Navient 2", balance = 3701.35, int = 0.0315,
-                          min_pay = 54.32, fixed = T, months_left = 85),
-          navient3 = list(name = "Navient 3", balance = 1012, int = 0.0655,
-                          min_pay = 31.09, fixed = T, months_left = 85),
-          navient4 = list(name = "Navient 4", balance = 3828.29, int = 0.0655,
-                          min_pay = 95.80, fixed = T, months_left = 85))
+x <- list(salliemae = list(name = "Commonbond", balance = 14294.65, int = 0.0445, min_pay = 275.54),
+          navient1 = list(name = "Navient 1", balance = 2414.92, int = 0.0535, min_pay = 38.04),
+          navient2 = list(name = "Navient 2", balance = 3701.35, int = 0.0315, min_pay = 54.32),
+          navient3 = list(name = "Navient 3", balance = 1012, int = 0.0655, min_pay = 31.09),
+          navient4 = list(name = "Navient 4", balance = 3828.29, int = 0.0655, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -19,24 +14,18 @@ word_num <- function(word, i){
 
 server <- function(input, output){
   
-  observeEvent(input$submit, {
-    print("Processing options")
-  })
-  
   counter <- reactiveValues(n = 0)
   
   observeEvent(input$add_loan, {
+    
     if(input$fillin) counter$n <- min(length(x), counter$n + 1)
     else counter$n <- counter$n + 1
-  })
-  
-  observeEvent(input$minus_loan, {
-    counter$n <- counter$n - 1
-    if(counter$n < 0) counter$n <- 0
-  })
-  
-  observeEvent(input$add_loan, {
+    
     i <- counter$n
+    
+    value_list <- list(name = x[[i]]$name,
+                       balance = x[[i]]$balance,
+                       min_pay = x[[i]]$min_pay)
     
     insertUI(
       selector = "#add_loan", 
@@ -52,9 +41,12 @@ server <- function(input, output){
   })
   
   observeEvent(input$minus_loan, {
+    counter$n <- counter$n - 1
+    if(counter$n < 0) counter$n <- 0
+    
     i <- counter$n
+    
     remove_loan <- sprintf("#loan_%s", i+1)
-    print(remove_loan)
     removeUI(selector = remove_loan)
   })
   
@@ -74,6 +66,10 @@ server <- function(input, output){
     )
   
     loans
+  })
+  
+  observeEvent(input$submit, {
+    print("Processing options")
   })
   
   options_plot_data <- eventReactive(input$submit, {
@@ -229,7 +225,7 @@ server <- function(input, output){
 
 ui <- fluidPage(
   
-  titlePanel("Student Loan Repayment Calculator"),
+  titlePanel("Loan Repayment Calculator"),
   br(),
   
   sidebarLayout(
