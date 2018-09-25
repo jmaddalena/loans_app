@@ -2,11 +2,11 @@ library(shiny)
 library(tidyverse)
 source("source.R")
 
-x <- list(salliemae = list(name = "Commonbond", balance = 14294.65, int = 0.0445, min_pay = 275.54),
-          navient1 = list(name = "Navient 1", balance = 2414.92, int = 0.0535, min_pay = 38.04),
-          navient2 = list(name = "Navient 2", balance = 3701.35, int = 0.0315, min_pay = 54.32),
-          navient3 = list(name = "Navient 3", balance = 1012, int = 0.0655, min_pay = 31.09),
-          navient4 = list(name = "Navient 4", balance = 3828.29, int = 0.0655, min_pay = 95.80))
+x <- list(list(name = "Loan 1", balance = 14294.65, int = 0.0445, min_pay = 275.54),
+          list(name = "Loan 2", balance = 2414.92, int = 0.0535, min_pay = 38.04),
+          list(name = "Loan 3", balance = 3701.35, int = 0.0315, min_pay = 54.32),
+          list(name = "Loan 4", balance = 1012, int = 0.0655, min_pay = 31.09),
+          list(name = "Loan 5", balance = 3828.29, int = 0.0655, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -18,25 +18,28 @@ server <- function(input, output){
   
   observeEvent(input$add_loan, {
     
-    if(input$fillin) counter$n <- min(length(x), counter$n + 1)
-    else counter$n <- counter$n + 1
-    
+    counter$n <- counter$n + 1
     i <- counter$n
     
-    value_list <- list(name = x[[i]]$name,
-                       balance = x[[i]]$balance,
-                       min_pay = x[[i]]$min_pay)
+    if(input$fillin & counter$n <= length(x)){
+      value_list <- list(name = x[[i]]$name,
+                         balance = x[[i]]$balance,
+                         min_pay = x[[i]]$min_pay,
+                         int = x[[i]]$int)
+    } else {
+      value_list <- list(name = "", balance = NA, min_pay = NA, int = NA)
+    }
     
     insertUI(
       selector = "#add_loan", 
       where = "beforeBegin",
       ui = tags$div(id = sprintf("loan_%s", i),
-                      h4(sprintf("Loan #%s", i)),
-                      textInput(word_num("loan", i), label = "Name", value = ""),
-                      numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
-                      numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
-                      numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
-                      br()) 
+                    h4(sprintf("Loan #%s", i)),
+                    textInput(word_num("loan", i), label = "Name", value = value_list$name),
+                    numericInput(word_num("bal", i), label = "Remaining balance", value = value_list$bal, min = 0, step = 20),
+                    numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = value_list$min_pay, min = 10, step = 5),
+                    numericInput(word_num("int", i), label = "Interest Rate", value = value_list$int, min = 0, max = 1, step = 0.01),
+                    br()) 
     )
   })
   
@@ -48,6 +51,49 @@ server <- function(input, output){
     
     remove_loan <- sprintf("#loan_%s", i+1)
     removeUI(selector = remove_loan)
+  })
+
+  observeEvent(input$fillin, { 
+    
+    #if(input$fillin == FALSE){
+      
+      for(i in 1:counter$n){
+        removeUI(selector = sprintf("#loan_%s", i))
+      }
+    
+    if(input$fillin == FALSE){
+      for(i in 1:counter$n){
+        insertUI(
+          selector = "#add_loan",
+          where = "beforeBegin",
+          ui = tags$div(id = sprintf("loan_%s", i),
+                        h4(sprintf("Loan #%s", i)),
+                        textInput(word_num("loan", i), label = "Name", value = ""),
+                        numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
+                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+                        numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
+                        br())
+        )
+      }
+      
+    }
+    
+    if(input$fillin == TRUE & counter$n >=1){
+
+      for(i in 1:counter$n){
+        insertUI(
+          selector = "#add_loan",
+          where = "beforeBegin",
+          ui = tags$div(id = sprintf("loan_%s", i),
+                        h4(sprintf("Loan #%s", i)),
+                        textInput(word_num("loan", i), label = "Name", value = x[[i]]$name),
+                        numericInput(word_num("bal", i), label = "Remaining balance", value = x[[i]]$balance, min = 0, step = 20),
+                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = x[[i]]$min_pay, min = 10, step = 5),
+                        numericInput(word_num("int", i), label = "Interest Rate", value = x[[i]]$int, min = 0, max = 1, step = 0.01),
+                        br())
+        )
+      }
+    }
   })
   
   loan_list <- eventReactive(input$submit, {
@@ -66,10 +112,6 @@ server <- function(input, output){
     )
   
     loans
-  })
-  
-  observeEvent(input$submit, {
-    print("Processing options")
   })
   
   options_plot_data <- eventReactive(input$submit, {
@@ -155,20 +197,21 @@ server <- function(input, output){
     
   })
   
-  heading1_str <- eventReactive(input$submit, {
-    "Select a point on either plot to see payment plan:"
+  values <- reactiveValues(test = NULL)
+  
+  observeEvent(loan_list(), {
+    if(!is.null(loan_list())) {
+      values$test <- loan_list()
+      removeUI(selector = "#heading1")
+    } 
+  })
+  
+  heading1_str <- eventReactive(input$options_click, {
+    "Payment plan"
   })
   
   output$heading1 <- renderText({
     heading1_str()
-  })
-  
-  heading2_str <- eventReactive(input$options_click, {
-    "Payment plan"
-  })
-  
-  output$heading2 <- renderText({
-    heading2_str()
   })
   
   output$choice_info <- renderTable({
@@ -192,16 +235,25 @@ server <- function(input, output){
     
   })
   
+  output$heading2 <- eventReactive(input$options_click, {
+    if(!is.na(mo_pay_choice())) "Action items"
+    else ""
+  })
+  
   output$heading3 <- eventReactive(input$options_click, {
-    "Action items"
+    "Payments by month under payment plan"
   })
   
   output$heading4 <- eventReactive(input$options_click, {
-    "Payments by month under payment plan"
+    "Total balance across loans over time"
   })
   
   output$schedule_plot <- renderPlot({
     plot_mo_payments(payment_sched = sched())
+  })
+  
+  output$balance_plot <- renderPlot({
+    plot_balance_over_time(payment_sched = sched())
   })
   
   output$action_items <- renderText({
@@ -246,18 +298,21 @@ ui <- fluidPage(
     
     mainPanel(
       
-      h5(textOutput("heading1")),
       plotOutput(outputId = "options_plot", click = "options_click"),
       
-      h4(textOutput("heading2")),
+      h4(textOutput("heading1")),
       tableOutput(outputId = "choice_info"),
       
-      h4(textOutput("heading3")),
+      h4(textOutput("heading2")),
       textOutput("action_items"),
+      br(),
+      
+      h4(textOutput("heading3")), 
+      plotOutput(outputId = "schedule_plot"),
       
       h4(textOutput("heading4")), 
-      plotOutput(outputId = "schedule_plot")
-      
+      plotOutput(outputId = "balance_plot")
+    
     )
   )
 )

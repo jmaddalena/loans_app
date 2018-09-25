@@ -34,7 +34,7 @@ loans_pay600 <- conduct_schedule_analysis(x, max_mo_pay = 650, int_tiebreak = "h
 
 ggplot(loans_pay600, aes(x = month, y = new_balance, fill = name)) + 
   geom_bar(stat = "identity") +
-  labs("Total loan balance")
+  labs(x = "Month from now", y = "Total loan balance")
 
 ```
 
