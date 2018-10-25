@@ -1,13 +1,12 @@
 library(shiny)
-library(shinydashboard)
 library(tidyverse)
 source("source.R")
 
-x <- list(list(name = "Loan 1", balance = 14087.79, int = 0.0445, min_pay = 275.54),
-          list(name = "Loan 2", balance = 2390.52, int = 0.0535, min_pay = 38.04),
-          list(name = "Loan 3", balance = 3659.35, int = 0.0315, min_pay = 54.32),
-          list(name = "Loan 4", balance = 999.94, int = 0.0655, min_pay = 31.09),
-          list(name = "Loan 5", balance = 3735.21, int = 0.0655, min_pay = 95.80))
+x <- list(list(name = "Loan 1", balance = 14294.65, int = 0.0445, min_pay = 275.54),
+          list(name = "Loan 2", balance = 2414.92, int = 0.0535, min_pay = 38.04),
+          list(name = "Loan 3", balance = 3701.35, int = 0.0315, min_pay = 54.32),
+          list(name = "Loan 4", balance = 1012, int = 0.0655, min_pay = 31.09),
+          list(name = "Loan 5", balance = 3828.29, int = 0.0655, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -15,7 +14,7 @@ word_num <- function(word, i){
 
 server <- function(input, output){
   
-  counter <- reactiveValues(n = 1)
+  counter <- reactiveValues(n = 0)
   
   observeEvent(input$add_loan, {
     
@@ -35,10 +34,10 @@ server <- function(input, output){
       selector = "#add_loan", 
       where = "beforeBegin",
       ui = tags$div(id = sprintf("loan_%s", i),
-                    h1(sprintf("Loan #%s", i)),
+                    h4(sprintf("Loan #%s", i)),
                     textInput(word_num("loan", i), label = "Name", value = value_list$name),
                     numericInput(word_num("bal", i), label = "Remaining balance", value = value_list$bal, min = 0, step = 20),
-                    numericInput(word_num("min_pay", i), label = "Minimum ent", value = value_list$min_pay, min = 10, step = 5),
+                    numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = value_list$min_pay, min = 10, step = 5),
                     numericInput(word_num("int", i), label = "Interest Rate", value = value_list$int, min = 0, max = 1, step = 0.01),
                     br()) 
     )
@@ -56,9 +55,11 @@ server <- function(input, output){
 
   observeEvent(input$fillin, { 
     
-    for(i in 1:counter$n){
-      removeUI(selector = sprintf("#loan_%s", i))
-    }
+    #if(input$fillin == FALSE){
+      
+      for(i in 1:counter$n){
+        removeUI(selector = sprintf("#loan_%s", i))
+      }
     
     if(input$fillin == FALSE){
       for(i in 1:counter$n){
@@ -66,10 +67,10 @@ server <- function(input, output){
           selector = "#add_loan",
           where = "beforeBegin",
           ui = tags$div(id = sprintf("loan_%s", i),
-                        h1(sprintf("Loan #%s", i)),
+                        h4(sprintf("Loan #%s", i)),
                         textInput(word_num("loan", i), label = "Name", value = ""),
                         numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
-                        numericInput(word_num("min_pay", i), label = "Minimum ent", value = NA, min = 10, step = 5),
+                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
                         numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
                         br())
         )
@@ -87,7 +88,7 @@ server <- function(input, output){
                         h4(sprintf("Loan #%s", i)),
                         textInput(word_num("loan", i), label = "Name", value = x[[i]]$name),
                         numericInput(word_num("bal", i), label = "Remaining balance", value = x[[i]]$balance, min = 0, step = 20),
-                        numericInput(word_num("min_pay", i), label = "Minimum ent", value = x[[i]]$min_pay, min = 10, step = 5),
+                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = x[[i]]$min_pay, min = 10, step = 5),
                         numericInput(word_num("int", i), label = "Interest Rate", value = x[[i]]$int, min = 0, max = 1, step = 0.01),
                         br())
         )
@@ -96,11 +97,6 @@ server <- function(input, output){
   })
   
   loan_list <- eventReactive(input$submit, {
-    
-    validate(
-      need(counter$n > 0, "Please input data for at least one loan.")
-    )
-    
     loans <- purrr::map(1:(counter$n), function(num){
   
       list(name = input[[word_num("loan", num)]],
@@ -112,7 +108,7 @@ server <- function(input, output){
     any_miss <- any(unlist(lapply(loans, function(sub) any(is.na(sub)))))
   
     validate(
-      need(!any_miss, "Please fill in missing inputs.")
+      need(!any_miss, "Please fill in missing inputs")
     )
   
     loans
@@ -187,9 +183,7 @@ server <- function(input, output){
     }
     
     if(!is.na(x_val) & x_val < data$mo_pay[2]) x_val <- data$mo_pay[2]
-
-    print(x_val)
-        
+    
     x_val
   })
   
@@ -280,43 +274,45 @@ server <- function(input, output){
   
 }
 
-ui <- dashboardPage(
+
+ui <- fluidPage(
   
-  dashboardHeader(title = "Loan Repayment Calculator"),
+  titlePanel("Loan Repayment Calculator"),
+  br(),
+  
+  sidebarLayout(
     
-  dashboardSidebar(
-    
-#    width = 500,
-
-    # tags$head(
-    #   tags$style(type="text/css", "label.control-label, .form-group.shiny-bound-input{ display: table-cell; text-align: center; vertical-align: middle; } .form-group { display: table-row;}")
-    # ),
-
-    checkboxInput("fillin", "Fill in example loan figures?", value = FALSE),
-    actionButton("add_loan", label = "", icon = icon("plus-square")),
-    actionButton("minus_loan", label = "", icon = icon("minus-square")),
-    actionButton("submit", label = "Show me my options")
-  ), 
-
-  dashboardBody(
-
-    fluidRow(
-      box(plotOutput(outputId = "options_plot", click = "options_click")),
-      box(title = "",
-        h4(textOutput("heading1")),
-        tableOutput(outputId = "choice_info"),
-        h4(textOutput("heading2")),
-        textOutput("action_items")
-       )
+    sidebarPanel(
+      
+      width = 3,
+      
+      tags$head(
+        tags$style(type="text/css", "label.control-label, .form-group.shiny-bound-input{ display: table-cell; text-align: center; vertical-align: middle; } .form-group { display: table-row;}")
+      ),
+      
+      checkboxInput("fillin", "Fill in example loan figures?", value = TRUE),
+      actionButton("add_loan", label = "", icon = icon("plus-square")),
+      actionButton("minus_loan", label = "", icon = icon("minus-square")),
+      actionButton("submit", "Show me my options")
     ),
-
-    fluidRow(
-      #h4(textOutput("heading3")),
-      tabBox(width = "90%",
-        tabPanel("Repayment Schedule", plotOutput(outputId = "schedule_plot")),
-        #h4(textOutput("heading4")),
-        tabPanel("Balance Over Time", plotOutput(outputId = "balance_plot"))
-      )
+    
+    mainPanel(
+      
+      plotOutput(outputId = "options_plot", click = "options_click"),
+      
+      h4(textOutput("heading1")),
+      tableOutput(outputId = "choice_info"),
+      
+      h4(textOutput("heading2")),
+      textOutput("action_items"),
+      br(),
+      
+      h4(textOutput("heading3")), 
+      plotOutput(outputId = "schedule_plot"),
+      
+      h4(textOutput("heading4")), 
+      plotOutput(outputId = "balance_plot")
+    
     )
   )
 )
