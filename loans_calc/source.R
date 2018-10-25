@@ -237,7 +237,7 @@ plot_payoff_options <- function(payoff_options){
                   label = sprintf("(Currently $%0.2f)", curr_pay), size = 3, col = "red") +
     geom_hline(data = baremin_gather, aes(yintercept = value), col = "red") +
     geom_hline(aes(yintercept = 0), col = NA) +
-    labs(title = "Select a point on either plot to see payment plan for selected monthly payment",
+    labs(title = "Select a point to see payment plan for selected monthly payment",
          x = "Total monthly payments", y = "") +
     scale_x_continuous(labels = scales::dollar_format(prefix="$"), lim = c(start_x, maxval)) 
 }

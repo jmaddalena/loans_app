@@ -1,0 +1,10 @@
+name: student_loans
+title:
+username:
+account: jmaddalena
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 469429
+bundleId: 1605317
+url: https://jmaddalena.shinyapps.io/student_loans/
+when: 1537907804.61057

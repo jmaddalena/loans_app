@@ -1,0 +1,24 @@
+---
+title: "Loan Repayment Application "
+output: html_notebook
+---
+
+```{r}
+source("source.R")
+```
+
+
+# To do for app
+
+* Accordian inputs 
+
+```{r}
+install.packages("bsplus")
+```
+
+
+* Tabs for plots
+
+Loans:
+* Most mortgages and  student loans are ammoritized, meaning that you pay for balance down 
+* Credit cards are different?
