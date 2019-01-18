@@ -1,12 +1,13 @@
 library(shiny)
+library(shinythemes)
 library(tidyverse)
 source("source.R")
 
-x <- list(list(name = "Loan 1", balance = 14294.65, int = 0.0445, min_pay = 275.54),
-          list(name = "Loan 2", balance = 2414.92, int = 0.0535, min_pay = 38.04),
-          list(name = "Loan 3", balance = 3701.35, int = 0.0315, min_pay = 54.32),
-          list(name = "Loan 4", balance = 1012, int = 0.0655, min_pay = 31.09),
-          list(name = "Loan 5", balance = 3828.29, int = 0.0655, min_pay = 95.80))
+x <- list(list(name = "Loan 1", balance = 13390.79, int = 0.0445, min_pay = 275.54),
+          list(name = "Loan 2", balance = 2303.40, int = 0.0535, min_pay = 38.04),
+          list(name = "Loan 3", balance = 3520.73, int = 0.0315, min_pay = 54.32),
+          list(name = "Loan 4", balance = 940.62, int = 0.0655, min_pay = 31.09),
+          list(name = "Loan 5", balance = 3427.62, int = 0.0655, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -57,25 +58,26 @@ server <- function(input, output){
     
     #if(input$fillin == FALSE){
       
-      for(i in 1:counter$n){
-        removeUI(selector = sprintf("#loan_%s", i))
-      }
+    for(i in 1:counter$n){
+      removeUI(selector = sprintf("#loan_%s", i))
+    }
     
     if(input$fillin == FALSE){
-      for(i in 1:counter$n){
-        insertUI(
-          selector = "#add_loan",
-          where = "beforeBegin",
-          ui = tags$div(id = sprintf("loan_%s", i),
-                        h4(sprintf("Loan #%s", i)),
-                        textInput(word_num("loan", i), label = "Name", value = ""),
-                        numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
-                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
-                        numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
-                        br())
-        )
+      if(counter$n > 0){
+        for(i in 1:counter$n){
+          insertUI(
+            selector = "#add_loan",
+            where = "beforeBegin",
+            ui = tags$div(id = sprintf("loan_%s", i),
+                          h4(sprintf("Loan #%s", i)),
+                          textInput(word_num("loan", i), label = "Name", value = ""),
+                          numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
+                          numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+                          numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
+                          br())
+          )
+        }
       }
-      
     }
     
     if(input$fillin == TRUE & counter$n >=1){
@@ -138,7 +140,7 @@ server <- function(input, output){
       for(mo_pay in mo_pay_try){
         
         mo_pay_display <- ifelse(is.na(mo_pay), min_pay, mo_pay)
-        incProgress(1/n, detail = sprintf("Monthly payment: $%0.2f", mo_pay_display))
+        incProgress(1/n, detail = sprintf("$%0.2f/month", mo_pay_display))
         
         sched_df <- conduct_schedule_analysis(loan_info_list = loan_list, 
                                               max_mo_pay = mo_pay, 
@@ -275,11 +277,11 @@ server <- function(input, output){
 }
 
 
-ui <- fluidPage(
+ui <- fluidPage(theme = shinytheme("cosmo"),
   
   titlePanel("Loan Repayment Calculator"),
   br(),
-  
+
   sidebarLayout(
     
     sidebarPanel(
@@ -293,6 +295,7 @@ ui <- fluidPage(
       checkboxInput("fillin", "Fill in example loan figures?", value = TRUE),
       actionButton("add_loan", label = "", icon = icon("plus-square")),
       actionButton("minus_loan", label = "", icon = icon("minus-square")),
+      h5(""),
       actionButton("submit", "Show me my options")
     ),
     

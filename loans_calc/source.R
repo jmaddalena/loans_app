@@ -173,7 +173,8 @@ plot_mo_payments = function(payment_sched){
     labs(y = "Total Monthly Payment", color = "") +
     scale_fill_manual("", values = cols_use) +
     scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
-    ggthemes::scale_color_gdocs()
+    ggthemes::scale_color_gdocs() +
+    theme_linedraw()
   
 }
 
@@ -222,7 +223,7 @@ plot_payoff_options <- function(payoff_options){
     filter(is.na(mo_pay)) %>%
     gather(group, value, -mo_pay) %>%
     mutate(value_lab = round(value),
-           padding = .07*value,
+           padding = .08*value,
            nudge_x = .05*(maxval - start_x))
   
   ggplot(all_gather, aes(x = mo_pay, y = value)) + 
@@ -231,15 +232,19 @@ plot_payoff_options <- function(payoff_options){
     geom_point() +
     geom_text(data = baremin_gather, position = "dodge",
               aes(x = put_text, y = value + padding, 
-                  label = "Making no overpayments"), size = 4, col = "red") +
+                  label = "Making no overpayments"), size = 5, col = "red") +
     geom_text(data = baremin_gather, position = "dodge",
               aes(x = put_text, y = value + padding/3), 
-                  label = sprintf("(Currently $%0.2f)", curr_pay), size = 3, col = "red") +
+                  label = sprintf("Currently $%0.2f", curr_pay), size = 4, col = "red") +
     geom_hline(data = baremin_gather, aes(yintercept = value), col = "red") +
     geom_hline(aes(yintercept = 0), col = NA) +
     labs(title = "Select a point to see payment plan for selected monthly payment",
          x = "Total monthly payments", y = "") +
-    scale_x_continuous(labels = scales::dollar_format(prefix="$"), lim = c(start_x, maxval)) 
+    scale_x_continuous(labels = scales::dollar_format(prefix="$"), lim = c(start_x, maxval)) +
+    theme_linedraw() +
+    theme(axis.text = element_text(size = 12),
+          strip.text.x = element_text(size = 15, face = "bold"), 
+          title = element_text(size = 15))
 }
 
 plot_balance_over_time <- function(payment_sched){
@@ -255,7 +260,8 @@ plot_balance_over_time <- function(payment_sched){
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
     scale_fill_manual("", values = cols_use) +
     labs(x = "Month from now", y = "Total loan balance") +
-    ggthemes::scale_color_gdocs()
+    ggthemes::scale_color_gdocs() +
+    theme_linedraw()
 }
 
 
