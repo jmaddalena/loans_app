@@ -154,29 +154,7 @@ conduct_schedule_analysis = function(loan_info_list, max_mo_pay = NA,
   
 }
 
-plot_mo_payments = function(payment_sched){
-  
-  min_pay = payment_sched %>% 
-    group_by(month) %>% 
-    summarize(min_pay_mo = sum(min_pay))
-  
-  cols = c("#11CEC4", "#218ED2", "#3250D6", "#6A43DA", 
-           "#B455DE", "#E267D2", "#E67AA9", "#EB8EBE")
-  
-  cols_use_seq = seq(1, 8, by = floor(8/length(unique(payment_sched$name))))
-  
-  cols_use = cols[cols_use_seq]
-  
-  ggplot(payment_sched, aes(x = month, y = payment)) +
-    geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
-    geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
-    labs(y = "Total Monthly Payment", color = "") +
-    scale_fill_manual("", values = cols_use) +
-    scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
-    ggthemes::scale_color_gdocs() +
-    theme_linedraw()
-  
-}
+
 
 get_payoff_options <- function(loan_info_list){ 
   
@@ -241,10 +219,37 @@ plot_payoff_options <- function(payoff_options){
     labs(title = "Select a point to see payment plan for selected monthly payment",
          x = "Total monthly payments", y = "") +
     scale_x_continuous(labels = scales::dollar_format(prefix="$"), lim = c(start_x, maxval)) +
+  #  scale_y_continuous(breaks = all_gather$value, labels = all_gather$value_lab) + 
     theme_linedraw() +
     theme(axis.text = element_text(size = 12),
           strip.text.x = element_text(size = 15, face = "bold"), 
           title = element_text(size = 15))
+}
+
+plot_mo_payments = function(payment_sched){
+  
+  min_pay = payment_sched %>% 
+    group_by(month) %>% 
+    summarize(min_pay_mo = sum(min_pay))
+  
+  cols = c("#11CEC4", "#218ED2", "#3250D6", "#6A43DA", 
+           "#B455DE", "#E267D2", "#E67AA9", "#EB8EBE")
+  
+  cols_use_seq = seq(1, 8, by = floor(8/length(unique(payment_sched$name))))
+  
+  cols_use = cols[cols_use_seq]
+  
+  ggplot(payment_sched, aes(x = month, y = payment)) +
+    geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
+    geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
+    labs(y = "Total Monthly Payment", color = "") +
+    scale_fill_manual("", values = cols_use) +
+    scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
+    ggthemes::scale_color_gdocs() +
+    scale_color_manual("", values = "red") +
+    theme_linedraw() +
+    scale_y_continuous(labels = scales::dollar_format(prefix="$"))
+  
 }
 
 plot_balance_over_time <- function(payment_sched){
@@ -259,9 +264,12 @@ plot_balance_over_time <- function(payment_sched){
   ggplot(payment_sched, aes(x = month, y = new_balance, fill = name)) + 
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
     scale_fill_manual("", values = cols_use) +
-    labs(x = "Month from now", y = "Total loan balance") +
+    labs(y = "Total loan balance") +
     ggthemes::scale_color_gdocs() +
-    theme_linedraw()
+    scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
+    theme_linedraw() +
+    
+    scale_y_continuous(labels = scales::dollar_format(prefix="$"))
 }
 
 

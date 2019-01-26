@@ -15,7 +15,7 @@ word_num <- function(word, i){
 
 server <- function(input, output){
   
-  counter <- reactiveValues(n = 0)
+  counter <- reactiveValues(n = 1)
   
   observeEvent(input$add_loan, {
     
@@ -117,7 +117,6 @@ server <- function(input, output){
   })
   
   options_plot_data <- eventReactive(input$submit, {
-    #get_payoff_options(loan_list())
     
     loan_list <- loan_list()
     
@@ -231,7 +230,9 @@ server <- function(input, output){
       rename(`Monthly payment` = mo_pay) %>%
       select(`Monthly payment`, `Months to pay off`, `Total interest to be paid`) 
     
-    values[values$`Monthly payment` == "$NA", "Monthly payment"] = "Minimum"
+    curr_pay <- options_plot_data()$mo_pay[2]
+    values[values$`Monthly payment` == "$NA", "Monthly payment"] = 
+      sprintf("Minimum (currently $%0.2f)", curr_pay)
     
     values
     
@@ -250,12 +251,18 @@ server <- function(input, output){
     "Total balance across loans over time"
   })
   
+  
+  
   output$schedule_plot <- renderPlot({
-    plot_mo_payments(payment_sched = sched())
+    withProgress(message = '', value = 1, {
+      plot_mo_payments(payment_sched = sched())
+    })
   })
   
   output$balance_plot <- renderPlot({
-    plot_balance_over_time(payment_sched = sched())
+    withProgress(message = '', value = 1, {
+      plot_balance_over_time(payment_sched = sched())
+    })
   })
   
   output$action_items <- renderText({
@@ -280,6 +287,8 @@ server <- function(input, output){
 ui <- fluidPage(theme = shinytheme("cosmo"),
   
   titlePanel("Loan Repayment Calculator"),
+  helpText("Use this app to see how much time and money you can save by overpaying on your amortized loans compared to paying the minimum required payments each month.
+           This tool can be used to better understand the length of repayment of each loan and expected total interest that will be paid."),
   br(),
 
   sidebarLayout(
