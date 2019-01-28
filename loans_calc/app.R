@@ -15,100 +15,84 @@ word_num <- function(word, i){
 
 server <- function(input, output){
   
-  counter <- reactiveValues(n = 1)
+  num_loans <- reactive(input$num_loans)
   
-  observeEvent(input$add_loan, {
-    
-    counter$n <- counter$n + 1
-    i <- counter$n
-    
-    if(input$fillin & counter$n <= length(x)){
-      value_list <- list(name = x[[i]]$name,
-                         balance = x[[i]]$balance,
-                         min_pay = x[[i]]$min_pay,
-                         int = x[[i]]$int)
-    } else {
-      value_list <- list(name = "", balance = NA, min_pay = NA, int = NA)
-    }
-    
-    insertUI(
-      selector = "#add_loan", 
-      where = "beforeBegin",
-      ui = tags$div(id = sprintf("loan_%s", i),
-                    h4(sprintf("Loan #%s", i)),
-                    textInput(word_num("loan", i), label = "Name", value = value_list$name),
-                    numericInput(word_num("bal", i), label = "Remaining balance", value = value_list$bal, min = 0, step = 20),
-                    numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = value_list$min_pay, min = 10, step = 5),
-                    numericInput(word_num("int", i), label = "Interest Rate", value = value_list$int, min = 0, max = 1, step = 0.01),
-                    br()) 
-    )
-  })
+  prev_loans <- reactiveValues(n = 0)
   
-  observeEvent(input$minus_loan, {
-    counter$n <- counter$n - 1
-    if(counter$n < 0) counter$n <- 0
+  observeEvent(num_loans(), {
     
-    i <- counter$n
+    print("observing")
     
-    remove_loan <- sprintf("#loan_%s", i+1)
-    removeUI(selector = remove_loan)
-  })
-
-  observeEvent(input$fillin, { 
+    print(loan_list())
     
-    #if(input$fillin == FALSE){
+    if(prev_loans$n != input$num_loans){
+      removeUI(selector = "#inserted_ui")
+    
+      acc_list <- purrr::map(1:input$num_loans, function(i){
       
-    for(i in 1:counter$n){
-      removeUI(selector = sprintf("#loan_%s", i))
-    }
-    
-    if(input$fillin == FALSE){
-      if(counter$n > 0){
-        for(i in 1:counter$n){
-          insertUI(
-            selector = "#add_loan",
-            where = "beforeBegin",
-            ui = tags$div(id = sprintf("loan_%s", i),
-                          h4(sprintf("Loan #%s", i)),
-                          textInput(word_num("loan", i), label = "Name", value = ""),
-                          numericInput(word_num("bal", i), label = "Remaining balance", value = NA, min = 0, step = 20),
-                          numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = NA, min = 10, step = 5),
-                          numericInput(word_num("int", i), label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01),
-                          br())
-          )
+        if(i > prev_loans$n & i <= length(x)){
+            value_list <- list(name = x[[i]]$name,
+                               balance = x[[i]]$balance,
+                               min_pay = x[[i]]$min_pay,
+                               int = x[[i]]$int) 
+        } else {
+          value_list <- list(name = loan_list()[[i]]$name,
+                             balance = loan_list()[[i]]$balance,
+                             min_pay = loan_list()[[i]]$min_pay,
+                             int = loan_list()[[i]]$int) 
         }
-      }
+        
+        accordionItem(
+          id = word_num("acc_", i),
+          title = word_num("LOAN ", i),
+          collapsed = TRUE,
+          textInput(word_num("loan", i), label = "Name", value = value_list$name),
+          numericInput(word_num("bal", i), label = "Remaining balance", value = value_list$bal, min = 0, step = 20),
+          numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = value_list$min_pay, min = 10, step = 5),
+          numericInput(word_num("int", i), label = "Interest Rate", value = value_list$int, min = 0, max = 1, step = 0.01)
+        )
+      })
+      
+      insertUI(
+        selector = "#num_loans",
+        where = "afterEnd",
+        ui =  tags$div(id = "inserted_ui",
+          helpText("Expand each loan to input information"),
+          do.call(accordion, acc_list)
+        )
+      )
     }
     
-    if(input$fillin == TRUE & counter$n >=1){
-
-      for(i in 1:counter$n){
-        insertUI(
-          selector = "#add_loan",
-          where = "beforeBegin",
-          ui = tags$div(id = sprintf("loan_%s", i),
-                        h4(sprintf("Loan #%s", i)),
-                        textInput(word_num("loan", i), label = "Name", value = x[[i]]$name),
-                        numericInput(word_num("bal", i), label = "Remaining balance", value = x[[i]]$balance, min = 0, step = 20),
-                        numericInput(word_num("min_pay", i), label = "Minimum monthly payment", value = x[[i]]$min_pay, min = 10, step = 5),
-                        numericInput(word_num("int", i), label = "Interest Rate", value = x[[i]]$int, min = 0, max = 1, step = 0.01),
-                        br())
-        )
-      }
-    }
+    prev_loans$n <- input$num_loans
+    
   })
   
-  loan_list <- eventReactive(input$submit, {
-    loans <- purrr::map(1:(counter$n), function(num){
+  loans_inputs <- reactive({
+    purrr::map(1:num_loans(), function(i){
+        purrr::map(c("loan", "bal", "min_pay", "int"), function(str){
+          input[[word_num(str, i)]]
+        })
+    })
+  })
   
+  loan_list <- eventReactive(loans_inputs(), {
+    print("reacting")
+    
+    loans <- purrr::map(1:num_loans(), function(num){
       list(name = input[[word_num("loan", num)]],
            balance = input[[word_num("bal", num)]],
            int = input[[word_num("int", num)]],
            min_pay = input[[word_num("min_pay", num)]])
     })
   
-    any_miss <- any(unlist(lapply(loans, function(sub) any(is.na(sub)))))
-  
+    any_miss <- any(
+      unlist(
+        lapply(loans, function(sub) 
+          any(is.na(sub))
+        )
+      )
+    )
+    
     validate(
       need(!any_miss, "Please fill in missing inputs")
     )
@@ -251,8 +235,6 @@ server <- function(input, output){
     "Total balance across loans over time"
   })
   
-  
-  
   output$schedule_plot <- renderPlot({
     withProgress(message = '', value = 1, {
       plot_mo_payments(payment_sched = sched())
@@ -283,32 +265,25 @@ server <- function(input, output){
   
 }
 
-
 ui <- fluidPage(theme = shinytheme("cosmo"),
+                
+  includeCSS("styles.css"),
   
-  titlePanel("Loan Repayment Calculator"),
-  helpText("Use this app to see how much time and money you can save by overpaying on your amortized loans compared to paying the minimum required payments each month.
-           This tool can be used to better understand the length of repayment of each loan and expected total interest that will be paid."),
+  titlePanel("Pay off your loans faster!"),
+  helpText("Repaying loans is stressful, but it helps to have a good plan. Let’s see how much time and money you can save by paying more than the minimum required amount each month."),
   br(),
 
   sidebarLayout(
     
     sidebarPanel(
-      
-      width = 3,
-      
-      tags$head(
-        tags$style(type="text/css", "label.control-label, .form-group.shiny-bound-input{ display: table-cell; text-align: center; vertical-align: middle; } .form-group { display: table-row;}")
-      ),
-      
-      checkboxInput("fillin", "Fill in example loan figures?", value = TRUE),
-      actionButton("add_loan", label = "", icon = icon("plus-square")),
-      actionButton("minus_loan", label = "", icon = icon("minus-square")),
-      h5(""),
-      actionButton("submit", "Show me my options")
+
+      numericInput("num_loans", "How many loans do you have?", value = 1, min = 1, max = 12, step = 1),
+      actionButton("submit", "Submit")
     ),
     
     mainPanel(
+      
+      textOutput(outputId = "temp"),      
       
       plotOutput(outputId = "options_plot", click = "options_click"),
       
@@ -324,7 +299,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
       
       h4(textOutput("heading4")), 
       plotOutput(outputId = "balance_plot")
-    
     )
   )
 )

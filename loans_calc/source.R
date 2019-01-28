@@ -246,7 +246,7 @@ plot_mo_payments = function(payment_sched){
     scale_fill_manual("", values = cols_use) +
     scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
     ggthemes::scale_color_gdocs() +
-    scale_color_manual("", values = "red") +
+    #scale_color_manual("", values = "red") +
     theme_linedraw() +
     scale_y_continuous(labels = scales::dollar_format(prefix="$"))
   
@@ -268,7 +268,6 @@ plot_balance_over_time <- function(payment_sched){
     ggthemes::scale_color_gdocs() +
     scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
     theme_linedraw() +
-    
     scale_y_continuous(labels = scales::dollar_format(prefix="$"))
 }
 
