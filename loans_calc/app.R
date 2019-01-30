@@ -1,13 +1,14 @@
 library(shiny)
 library(shinythemes)
 library(tidyverse)
+library(shinydashboardPlus)
 source("source.R")
 
-x <- list(list(name = "Loan 1", balance = 13390.79, int = 0.0445, min_pay = 275.54),
-          list(name = "Loan 2", balance = 2303.40, int = 0.0535, min_pay = 38.04),
-          list(name = "Loan 3", balance = 3520.73, int = 0.0315, min_pay = 54.32),
-          list(name = "Loan 4", balance = 940.62, int = 0.0655, min_pay = 31.09),
-          list(name = "Loan 5", balance = 3427.62, int = 0.0655, min_pay = 95.80))
+x <- list(list(name = "Commonbond", balance = 12916.83, int = 0.0445, min_pay = 275.54),
+          list(name = "Navient 1", balance = 2243.34, int = 0.0535, min_pay = 38.04),
+          list(name = "Navient 2", balance = 3426.51, int = 0.0315, min_pay = 54.32),
+          list(name = "Navient 3", balance = 933.43, int = 0.0655, min_pay = 31.09),
+          list(name = "Navient 4", balance = 3217.86, int = 0.0655, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -21,26 +22,38 @@ server <- function(input, output){
   
   observeEvent(num_loans(), {
     
-    print("observing")
-    
-    print(loan_list())
-    
     if(prev_loans$n != input$num_loans){
+
       removeUI(selector = "#inserted_ui")
     
       acc_list <- purrr::map(1:input$num_loans, function(i){
-      
+        
+        # if new loan and within length of x
         if(i > prev_loans$n & i <= length(x)){
-            value_list <- list(name = x[[i]]$name,
-                               balance = x[[i]]$balance,
-                               min_pay = x[[i]]$min_pay,
-                               int = x[[i]]$int) 
+          value_list <- list(name = x[[i]]$name,
+                             balance = x[[i]]$balance,
+                             min_pay = x[[i]]$min_pay,
+                             int = x[[i]]$int) 
+        # if new loan but beyond length of x
+        } else if(i > prev_loans$n){
+          value_list <- list(name = NA,
+                             balance = NA,
+                             min_pay = NA,
+                             int = NA)
+        # if not new loan
         } else {
-          value_list <- list(name = loan_list()[[i]]$name,
-                             balance = loan_list()[[i]]$balance,
-                             min_pay = loan_list()[[i]]$min_pay,
-                             int = loan_list()[[i]]$int) 
+          name <- loan_list()[[i]]$name
+          balance <- loan_list()[[i]]$balance
+          min_pay <- loan_list()[[i]]$min_pay
+          int <- loan_list()[[i]]$int
+      
+          value_list <- list(name = ifelse(is.null(name), NA, name),
+                             balance = ifelse(is.null(balance), NA, balance),
+                             min_pay =  ifelse(is.null(min_pay), NA, min_pay),
+                             int = ifelse(is.null(int), NA, int))
         }
+        
+        coll <- ifelse(i == 1, FALSE, TRUE)
         
         accordionItem(
           id = word_num("acc_", i),
@@ -76,33 +89,29 @@ server <- function(input, output){
   })
   
   loan_list <- eventReactive(loans_inputs(), {
-    print("reacting")
     
-    loans <- purrr::map(1:num_loans(), function(num){
+    purrr::map(1:num_loans(), function(num){
+      
       list(name = input[[word_num("loan", num)]],
            balance = input[[word_num("bal", num)]],
            int = input[[word_num("int", num)]],
            min_pay = input[[word_num("min_pay", num)]])
     })
-  
-    any_miss <- any(
-      unlist(
-        lapply(loans, function(sub) 
-          any(is.na(sub))
-        )
-      )
-    )
-    
-    validate(
-      need(!any_miss, "Please fill in missing inputs")
-    )
-  
-    loans
   })
   
   options_plot_data <- eventReactive(input$submit, {
     
     loan_list <- loan_list()
+    
+    is_miss <- unlist(lapply(loan_list, function(sub)
+      any(is.na(sub))
+    ))
+    
+    which_miss <- which(is_miss)
+    
+    validate(
+      need(!any(is_miss), sprintf("Please fill in missing inputs (Loans %s)", paste(which_miss, collapse = ", ")))
+    )
     
     withProgress(message = 'Calculating options\r\n', value = 0, {
       
@@ -163,7 +172,12 @@ server <- function(input, output){
       x_val <- NA  
       
     } else {
-      x_val <- plyr::round_any(click$x, 50)
+     # x_val <- plyr::round_any(click$x, 50)
+     poss_vals <- data$mo_pay[2:nrow(data)] 
+     print(poss_vals)
+     min_click <- which.min(abs(click$x - poss_vals))
+     x_val <- poss_vals[min_click]
+     print(x_val)
       
     }
     
@@ -204,7 +218,12 @@ server <- function(input, output){
     
     data <- options_plot_data()
     
+    print(head(data))
+    
     click_val <- mo_pay_choice()
+    
+    print('click_val')
+    print(click_val)
     
     values <- data %>% 
       filter(mo_pay %in% c(NA, click_val)) %>%
@@ -214,7 +233,10 @@ server <- function(input, output){
       rename(`Monthly payment` = mo_pay) %>%
       select(`Monthly payment`, `Months to pay off`, `Total interest to be paid`) 
     
+    print(values)
+    
     curr_pay <- options_plot_data()$mo_pay[2]
+    
     values[values$`Monthly payment` == "$NA", "Monthly payment"] = 
       sprintf("Minimum (currently $%0.2f)", curr_pay)
     
@@ -276,7 +298,15 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
   sidebarLayout(
     
     sidebarPanel(
-
+      # accordion(
+      #   accordionItem(id = 1,
+      #                 title = "fake input",
+      #                 collapsed = TRUE,
+      #                 textInput("temp0", label = "Name", value = NA),
+      #                 numericInput("temp1", label = "Remaining balance", value = NA, min = 0, step = 20),
+      #                 numericInput("temp2", label = "Minimum monthly payment", value = NA, min = 10, step = 5),
+      #                 numericInput("temp3", label = "Interest Rate", value = NA, min = 0, max = 1, step = 0.01))
+      # ),
       numericInput("num_loans", "How many loans do you have?", value = 1, min = 1, max = 12, step = 1),
       actionButton("submit", "Submit")
     ),
