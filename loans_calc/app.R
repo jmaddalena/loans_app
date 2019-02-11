@@ -12,11 +12,6 @@ x <- list(list(name = "Commonbond", balance = 12916.83, int = 4.45, min_pay = 27
           list(name = "Navient 3", balance = 933.43, int = 6.55, min_pay = 31.09),
           list(name = "Navient 4", balance = 3217.86, int = 6.55, min_pay = 95.80))
 
-# x <- list(list(name = "loan 1", balance = 5000, int = 4.5, min_pay = 93.22),
-#            list(name = "loan 2", balance = 8000, int = 3.5, min_pay = 145.53),
-#           list(name = "loan 3", balance = 10000, int = 4.5, min_pay = 158.74))
-
-
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
 }
@@ -90,13 +85,6 @@ server <- function(input, output, session){
     prev_loans$n <- input$num_loans
     
   })
-  
-  # observeEvent(input$submit, {
-  #   removeUI("#slider")
-  #   removeUI("#one_bar_plot")
-  #   removeUI("#action_head")
-  #   removeUI("#action_items")
-  # })
   
   loans_inputs <- reactive({
     
@@ -188,13 +176,9 @@ server <- function(input, output, session){
   
   output$options_plot <- renderPlot({
     
-    plot_payoff_options_v2(options_plot_data())
+    plot_payoff_options(options_plot_data())
     
   })
-  
-  # output$all_bar_plots <- renderPlot({
-  #   plot_bar_all_options(sched_data())
-  # })
   
   same_term <- reactive({
     

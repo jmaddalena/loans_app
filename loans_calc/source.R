@@ -213,107 +213,9 @@ get_all_schedules <- function(loan_list){
   
 }
 
-# get_all_schedules <- function(loan_info_list){
-#   
-#   min_pay <- lapply(loan_info_list, function(sub_list){
-#     sub_list[["min_pay"]]
-#   }) %>% unlist %>% sum
-#   
-#   start_50 <- min_pay - min_pay %% 50 + 50
-#   
-#   if(abs(min_pay - start_50) < 20) start_50 <- start_50 + 50
-#   
-#   mo_pay_try <- c(NA, min_pay, seq(start_50, ceiling(start_50+500), by = 50))
-#   
-#   purrr::map_df(mo_pay_try, function(mo_pay){
-#     
-#     sched_df <- conduct_schedule_analysis(loan_info_list = loan_info_list, 
-#                                           max_mo_pay = mo_pay, 
-#                                           int_tiebreak = "higher balance")  %>%
-#       mutate(mo_pay = mo_pay)
-#   })
-#   
-# }
 
-get_payoff_options <- function(all_sched){
-  all_sched %>%
-    group_by(max_mo_pay) %>%
-    summarize(`Months to pay off` = max(month),
-              `Total interest to be paid` = sum(int_pay)) %>%
-    mutate(mo_pay = mo_pay)
-}
-
-get_payoff_options_orig <- function(loan_info_list){ 
-  
-  min_pay <- lapply(loan_info_list, function(sub_list){
-    sub_list[["min_pay"]]
-  }) %>% unlist %>% sum
-  
-  start_50 <- min_pay - min_pay %% 50 + 50
-  
-  if(abs(min_pay - start_50) < 20) start_50 <- start_50 + 50
-  
-  mo_pay_try <- c(NA, min_pay, seq(start_50, ceiling(start_50+500), by = 50))
-  
-  all_payoff_options <- purrr::map_df(mo_pay_try, function(mo_pay){
-    
-    sched_df <- conduct_schedule_analysis(loan_info_list = loan_info_list, 
-                                          max_mo_pay = mo_pay, 
-                                          int_tiebreak = "higher balance")
-    
-    sched_df %>%
-      summarize(`Months to pay off` = max(month),
-                `Total interest to be paid` = sum(int_pay)) %>%
-      mutate(mo_pay = mo_pay)
-  })
-  
-}
 
 plot_payoff_options <- function(payoff_options){
-  
-  maxval <- max(payoff_options$mo_pay, na.rm = T)
-  
-  curr_pay <- payoff_options$mo_pay[2]
-  
-  all_gather <- payoff_options %>% 
-    filter(!is.na(mo_pay)) %>%
-    gather(group, value, -mo_pay) %>%
-    mutate(value_lab = case_when(group == "Months to pay off" ~ as.character(value),
-                                 TRUE ~ sprintf("$%0.2f", value)))
-  
-  start_x <- payoff_options$mo_pay[2]
-  put_text <- start_x + .5*(maxval - start_x)
-  
-  baremin_gather <- payoff_options %>%
-    filter(is.na(mo_pay)) %>%
-    gather(group, value, -mo_pay) %>%
-    mutate(value_lab = round(value),
-           padding = .08*value,
-           nudge_x = .05*(maxval - start_x))
-  
-  ggplot(all_gather, aes(x = mo_pay, y = value)) + 
-    facet_wrap(~group, scales = "free_y", ncol = 2) +
-    geom_line() +
-    geom_point() +
-    geom_text(data = baremin_gather, position = "dodge",
-              aes(x = put_text, y = value + padding, 
-                  label = "Making no overpayments"), size = 5, col = "red") +
-    geom_text(data = baremin_gather, position = "dodge",
-              aes(x = put_text, y = value + padding/3), 
-                  label = sprintf("Currently $%0.2f", curr_pay), size = 4, col = "red") +
-    geom_hline(data = baremin_gather, aes(yintercept = value), col = "red") +
-    geom_hline(aes(yintercept = 0), col = NA) +
-    labs(title = "Select a point to see payment plan for selected monthly payment",
-         x = "Total monthly payments", y = "") +
-    scale_x_continuous(labels = scales::dollar_format(prefix="$"), lim = c(start_x, maxval)) +
-  #  scale_y_continuous(breaks = all_gather$value, labels = all_gather$value_lab) + 
-    theme_linedraw() +
-    theme(axis.text = element_text(size = 12),
-          strip.text.x = element_text(size = 15, face = "bold"), 
-          title = element_text(size = 15))
-}
-
-plot_payoff_options_v2 <- function(payoff_options){
   
   maxval <- max(payoff_options$mo_pay, na.rm = T)
   
@@ -450,8 +352,6 @@ plot_balance_over_time <- function(payment_sched){
 
 plot_bar_all_options <- function(all_sched){
   
-  #all_sched$mo_pay <- all_sched$mo_pay_lab
-  
   vals <- unique(all_sched$mo_pay)
   vals_use <- c(vals[1:2], vals[which(vals %% 100 == 0)])
   vals_use <- vals_use[!duplicated(vals_use)]
@@ -465,15 +365,7 @@ plot_bar_all_options <- function(all_sched){
   cols_use_seq = seq(1, 8, by = floor(8/length(unique(all_sched$name))))
   
   cols_use = cols[cols_use_seq]
-  # 
-  # max_y <- baremin_gather %>% 
-  #   filter(group == "Total interest to be paid") %>%
-  #   mutate(max_y = value + padding) %>%
-  #   pull(max_y)
-  # 
-  # if(max_y > 3000){ breaks <- seq(0, max_y, by = 500)
-  # } else breaks <- seq(0, max_y, by = 200)
-  # 
+
   p1 <- ggplot(all_sched, aes(x = month, y = payment)) +
     facet_wrap(~ mo_pay_lab, ncol = 1) +
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6, size = .1) +
@@ -536,7 +428,6 @@ plot_bar_all_options <- function(all_sched){
       panel.background = element_blank()
     ) +
     labs(x = "", y = "", title = "") +
-  #  scale_x_continuous(breaks = NULL) +
     geom_text(aes(label = mo_pay), size = 4)
   
   gridExtra::grid.arrange(p0, p1, p2, ncol = 3, widths = c(4,8,8))
@@ -566,11 +457,9 @@ plot_bar_one_option <- function(all_sched, mo_pay_use){
     scale_x_continuous("Month from now", breaks = seq(12, max(all_sched$month), by = 12),
                        limits = month_range) +
     ggthemes::scale_color_gdocs() +
-    #scale_color_manual("", values = "red") +
     theme_linedraw() +
     scale_y_continuous(labels = scales::dollar_format(prefix="$"),
                        limits = c(0, max_payment)) +
-   # guides(fill=FALSE) +
     theme(
       axis.title.y=element_blank(),
       strip.background = element_blank(),
@@ -584,11 +473,9 @@ plot_bar_one_option <- function(all_sched, mo_pay_use){
     scale_x_continuous("Month from now", breaks = seq(12, max(all_sched$month), by = 12),
                        limits = month_range) +
     ggthemes::scale_color_gdocs() +
-    #scale_color_manual("", values = "red") +
     theme_linedraw() +
     scale_y_continuous(labels = scales::dollar_format(prefix="$")) +
-   # guides(fill=FALSE) +
-     theme(legend.position="bottom", legend.direction="horizontal") +
+    theme(legend.position="bottom", legend.direction="horizontal") +
     theme(
       axis.title.y=element_blank(),
       strip.background = element_blank(),
