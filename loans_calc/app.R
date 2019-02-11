@@ -1,6 +1,7 @@
 library(shiny)
 library(shinythemes)
 library(shinyWidgets)
+library(shinydashboardPlus)
 library(tidyverse)
 library(lubridate)
 source("source.R")
@@ -267,12 +268,12 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
   
   titlePanel("Pay off your loans faster!"),
   helpText("Repaying loans is stressful, but it helps to have a good plan. Let’s see how much time and money you can save by paying more than the minimum required amount each month."),
-  helpText(HTML('<p style= font-size: 4pt">NOTE: If any of your loans have variable interest rates, the calculations in this app are only an approximation.</p>')),
+  helpText(HTML("<font size='-3'> NOTE: If any loans have variable interest rates, the calculations in this app are only an approximation. </font>")),
   br(),
 
   sidebarLayout(
     
-    sidebarPanel(
+    sidebarPanel(width = 3,
       numericInput("num_loans", "How many loans do you have?", value = 1, min = 1, max = 8, step = 1),
       actionButton("submit", "Crunch numbers")
     ),
@@ -286,7 +287,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
         tabPanel("Payment Plans", 
                  uiOutput("slider"),
                  plotOutput("one_bar_plot"),
-                 br(),
+                # br(),
                  h3(textOutput("action_head")),
                  textOutput("action_items")
         )
