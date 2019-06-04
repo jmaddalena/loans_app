@@ -6,11 +6,10 @@ library(tidyverse)
 library(lubridate)
 source("source.R")
 
-x <- list(list(name = "Commonbond", balance = 12916.83, int = 4.45, min_pay = 275.54),
-          list(name = "Navient 1", balance = 2243.34, int = 5.35, min_pay = 38.04),
-          list(name = "Navient 2", balance = 3426.51, int = 3.15, min_pay = 54.32),
-          list(name = "Navient 3", balance = 933.43, int = 6.55, min_pay = 31.09),
-          list(name = "Navient 4", balance = 3217.86, int = 6.55, min_pay = 95.80))
+x <- list(list(name = "Commonbond", balance = 11993.80, int = 4.45, min_pay = 275.54),
+          list(name = "Navient 1", balance = 2131.37, int = 5.35, min_pay = 38.04),
+          list(name = "Navient 2", balance = 3245.34, int = 3.15, min_pay = 54.32),
+          list(name = "Navient 4", balance = 1855.51, int = 6.55, min_pay = 95.80))
 
 word_num <- function(word, i){
   sprintf("%s%s", word, i)
@@ -35,18 +34,11 @@ server <- function(input, output, session){
   
     acc_list <- purrr::map(1:input$num_loans, function(i){
       
-      # if new loan and within length of x
-      if(i > prev_loans$n & i <= length(x)){
+      if(i > prev_loans$n){
         value_list <- list(name = x[[i]]$name,
                            balance = x[[i]]$balance,
                            min_pay = x[[i]]$min_pay,
-                           int = x[[i]]$int) 
-      # if new loan but beyond length of x
-      } else if(i > prev_loans$n){
-        value_list <- list(name = NA,
-                           balance = NA,
-                           min_pay = NA,
-                           int = NA)
+                           int = x[[i]]$int)
       # if not new loan
       } else {
         name <- loan_list()[[i]]$name
@@ -252,7 +244,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
   
   titlePanel("Pay off your loans faster!"),
   helpText("Repaying loans is stressful, but it helps to have a good plan. Let’s see how much time and money you can save by paying more than the minimum required amount each month."),
-  helpText(HTML("<font size='-3'> NOTE: If any loans have variable interest rates, the calculations in this app are only an approximation. </font>")),
+  helpText(HTML("<font size='-3'> NOTE: This calculator assumes all loans have fixed payments and interest rates. </font>")),
   br(),
 
   sidebarLayout(
@@ -276,7 +268,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                  textOutput("action_items")
         )
       )
-      
     )
   )
 )

@@ -275,7 +275,10 @@ plot_payoff_options <- function(payoff_options){
     mutate(max_y = value + padding) %>%
     pull(max_y)
   
-  if(max_y > 3000){ breaks <- seq(0, max_y, by = 500)
+  if(max_y > 300000){ breaks <- seq(0, max_y, by = 50000)
+  } else if(max_y > 100000){ breaks <- seq(0, max_y, by = 10000)
+  } else if(max_y > 10000){ breaks <- seq(0, max_y, by = 2000)
+  } else if(max_y > 3000){ breaks <- seq(0, max_y, by = 500)
   } else breaks <- seq(0, max_y, by = 200)
   
   p2_str <- "Total interest to be paid"
@@ -318,12 +321,16 @@ plot_mo_payments = function(payment_sched){
   
   cols_use = cols[cols_use_seq]
   
+  max_mo = max(payment_sched$month)
+  if(max_mo < 200) xbreaks = seq(12, max_mo, by = 12)
+  else xbreaks = seq(12, max_mo, by = 24)
+  
   ggplot(payment_sched, aes(x = month, y = payment)) +
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
     geom_line(data = min_pay, aes(y = min_pay_mo, color = "Minimum monthly\n payments"), size = 1) +
     labs(y = "Total Monthly Payment", color = "") +
     scale_fill_manual("", values = cols_use) +
-    scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
+    scale_x_continuous("Month from now", breaks = xbreaks) +
     ggthemes::scale_color_gdocs() +
     #scale_color_manual("", values = "red") +
     theme_linedraw() +
@@ -340,12 +347,16 @@ plot_balance_over_time <- function(payment_sched){
   
   cols_use = cols[cols_use_seq]
   
+  max_mo = max(payment_sched$month)
+  if(max_mo < 200) xbreaks = seq(12, max_mo, by = 12)
+  else xbreaks = seq(0, max_mo, by = 24)
+  
   ggplot(payment_sched, aes(x = month, y = new_balance, fill = name)) + 
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6) +
     scale_fill_manual("", values = cols_use) +
     labs(y = "Total loan balance") +
     ggthemes::scale_color_gdocs() +
-    scale_x_continuous("Month from now", breaks = seq(12, max(payment_sched$month), by = 12)) +
+    scale_x_continuous("Month from now", breaks = xbreaks) +
     theme_linedraw() +
     scale_y_continuous(labels = scales::dollar_format(prefix="$"))
 }
@@ -450,12 +461,15 @@ plot_bar_one_option <- function(all_sched, mo_pay_use){
   
   cols_use = cols[cols_use_seq]
   
+  max_mo = max(all_sched$month)
+  if(max_mo < 180) xbreaks = seq(0, max_mo, by = 12)
+  else xbreaks = seq(0, max_mo, by = 24)
+  
   p1 <- ggplot(filter_sched, aes(x = month, y = payment)) +
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6, size = .1) +
     labs(title = "Payments over time", y = "Monthly Payment", color = "") +
     scale_fill_manual("", values = cols_use) +
-    scale_x_continuous("Month from now", breaks = seq(12, max(all_sched$month), by = 12),
-                       limits = month_range) +
+    scale_x_continuous("Month from now", breaks = xbreaks, limits = month_range) +
     ggthemes::scale_color_gdocs() +
     theme_linedraw() +
     scale_y_continuous(labels = scales::dollar_format(prefix="$"),
@@ -470,7 +484,7 @@ plot_bar_one_option <- function(all_sched, mo_pay_use){
     geom_bar(stat = "identity", color = "white", aes(fill = name), alpha = .6, size = .1) +
     labs(title = "Balance over time", y = "Remaining Balance", color = "") +
     scale_fill_manual("", values = cols_use) +
-    scale_x_continuous("Month from now", breaks = seq(12, max(all_sched$month), by = 12),
+    scale_x_continuous("Month from now", breaks = xbreaks,
                        limits = month_range) +
     ggthemes::scale_color_gdocs() +
     theme_linedraw() +
