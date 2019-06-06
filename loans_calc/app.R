@@ -35,10 +35,10 @@ server <- function(input, output, session){
     acc_list <- purrr::map(1:input$num_loans, function(i){
       
       if(i > prev_loans$n){
-        value_list <- list(name = x[[i]]$name,
-                           balance = x[[i]]$balance,
-                           min_pay = x[[i]]$min_pay,
-                           int = x[[i]]$int)
+        value_list <- list(name = "", #x[[i]]$name,
+                           balance = NA, #x[[i]]$balance,
+                           min_pay = NA, #x[[i]]$min_pay,
+                           int = NA) #x[[i]]$int)
       # if not new loan
       } else {
         name <- loan_list()[[i]]$name
@@ -111,6 +111,26 @@ server <- function(input, output, session){
     
     validate(
       need(!any(is_miss), sprintf("Please fill in missing inputs (Loans %s)", paste(which_miss, collapse = ", ")))
+    )
+    
+    get_loan_term <- function(A, P, r){
+      tryCatch({
+        log(A/(A - P*r/12))/log(r/12+1)/12
+      }, warning = function(w){
+        Inf
+      })
+    }
+    
+    all_loan_terms <- unlist(lapply(loan_list, function(loan_info){
+      get_loan_term(loan_info$min_pay, loan_info$balance, loan_info$int/100)
+    }))
+    
+    too_high <- all_loan_terms > 30
+    which_too_high <- which(too_high)
+        
+    validate(
+      need(!any(which_too_high), sprintf("Loan terms too long for %s. \nAre you sure you entered correct information?", 
+                  paste(sprintf("Loan #%s (%s years)", which_too_high, all_loan_terms[which_too_high]), collapse = ", ")))
     )
     
     withProgress(message = 'Calculating options\r\n', value = 0, {

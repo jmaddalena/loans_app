@@ -4,7 +4,7 @@ username:
 account: jmaddalena
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 389328
-bundleId: 1870661
+appId: 965330
+bundleId: 2136291
 url: https://jmaddalena.shinyapps.io/loans_calc/
-when: 1549941098.43844
+when: 1559850552.90915
